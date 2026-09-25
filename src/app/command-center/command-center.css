@@ -2,3 +2,5 @@ body { margin: 0; font: 16px system-ui, sans-serif; }
 main { max-width: 42rem; margin: 15vh auto 0; padding: 1.5rem; }
 label { display: block; margin-bottom: 0.75rem; }
 input { width: 100%; box-sizing: border-box; padding: 0.75rem; font: inherit; }
+button { margin-top: 0.75rem; padding: 0.5rem 0.9rem; font: inherit; }
+[role="status"] { min-height: 1.5em; }
