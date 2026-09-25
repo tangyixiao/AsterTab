@@ -1,0 +1,24 @@
+{
+  "name": "astertab",
+  "version": "1.0.0",
+  "description": "Don't replace your tools. Connect them.",
+  "scripts": {
+    "dev": "wxt -b chrome",
+    "dev:edge": "wxt -b edge",
+    "build": "wxt build -b chrome",
+    "build:edge": "wxt build -b edge",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "preact": "10.29.8"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "2.10.6",
+    "typescript": "6.0.3",
+    "vite": "8.3.0",
+    "vitest": "5.0.1",
+    "wxt": "0.21.4"
+  }
+}
