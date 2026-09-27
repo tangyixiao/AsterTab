@@ -5,6 +5,7 @@ export default defineConfig({
   manifest: {
     name: "AsterTab",
     description: "Don't replace your tools. Connect them.",
+    optional_host_permissions: ["https://www.luogu.com.cn/*", "https://api.github.com/*"],
   },
   vite: () => ({ plugins: [preact({ reactAliasesEnabled: false })] }),
 });
