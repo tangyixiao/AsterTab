@@ -69,7 +69,9 @@ async function readBoundedText(response: Response): Promise<string> {
 
 async function fetchSelected(url: string, fetcher: typeof fetch, headers?: HeadersInit): Promise<string> {
   const response = await fetcher(url, { credentials: "omit", redirect: "error", ...(headers ? { headers } : {}) });
-  if (!response.ok || response.redirected || (response.url && response.url !== url)) throw new Error("来源读取失败或发生跳转。");
+  if (response.redirected || (response.url && response.url !== url)) throw new Error("来源发生跳转，已停止读取。");
+  if (response.status === 403 && url.startsWith("https://api.github.com/")) throw new Error("GitHub 公共 API 返回 HTTP 403，权限或请求次数受限。");
+  if (!response.ok) throw new Error(`来源读取失败（HTTP ${response.status}）。`);
   return readBoundedText(response);
 }
 

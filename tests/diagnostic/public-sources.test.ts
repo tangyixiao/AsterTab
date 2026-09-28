@@ -67,4 +67,10 @@ describe("selected public source readers", () => {
     const huge = vi.fn(async () => new Response("x".repeat(1_000_001), { status: 200 }));
     await expect(readLuoguProblem("https://www.luogu.com.cn/problem/P1001", huge)).rejects.toThrow();
   });
+
+  it("explains a public GitHub API limit without trying another endpoint", async () => {
+    const limited = vi.fn(async () => new Response("rate limit exceeded", { status: 403 }));
+    await expect(readGitHubFile("https://github.com/a/b/blob/main/src/file.ts", limited)).rejects.toThrow(/GitHub.*403.*受限/);
+    expect(limited).toHaveBeenCalledTimes(1);
+  });
 });

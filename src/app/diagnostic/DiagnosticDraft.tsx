@@ -171,7 +171,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
           }} />
           <button type="button" disabled={codeLoading} onClick={() => { void readCode(); }}>{codeLoading ? "读取中…" : "读取此文件"}</button>
         </div>
-        <p class="draft-help">只读取这个公开文件。带斜杠的分支名请使用文件永久链接，或粘贴代码。</p>
+        <p class="draft-help">只读取这个公开文件。带斜杠的分支名请使用文件永久链接，或粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
         <label for="code-label">显示名称</label>
         <input id="code-label" value={codeLabel} maxLength={200} onInput={event => setCodeLabel(event.currentTarget.value)} />
         <label for="code-text">代码内容</label>
