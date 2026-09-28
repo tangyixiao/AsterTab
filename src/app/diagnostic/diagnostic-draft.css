@@ -1,0 +1,17 @@
+.diagnostic-draft { max-width: 64rem; margin: 2rem auto 4rem; }
+.diagnostic-draft h1 { margin: 0 0 0.5rem; }
+.diagnostic-draft h2 { margin-top: 2rem; }
+.draft-heading { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.draft-heading p, .draft-help { color: #555; }
+.diagnostic-draft fieldset { margin: 1.5rem 0; padding: 1rem; border: 1px solid #bbb; border-radius: 0.4rem; }
+.diagnostic-draft legend { padding: 0 0.35rem; font-weight: 600; }
+.diagnostic-draft label { margin-top: 0.75rem; margin-bottom: 0.4rem; }
+.diagnostic-draft textarea { width: 100%; box-sizing: border-box; padding: 0.75rem; font: inherit; resize: vertical; }
+.diagnostic-draft .draft-read-row { display: flex; gap: 0.75rem; align-items: start; }
+.draft-read-row input { flex: 1; min-width: 0; }
+.draft-read-row button { margin: 0; white-space: nowrap; }
+.diagnostic-draft .draft-check { display: flex; align-items: center; gap: 0.5rem; }
+.draft-check input { width: auto; }
+.diagnostic-draft [role="alert"] { color: #a00020; }
+#diagnostic-preview { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border: 1px solid #bbb; border-radius: 0.4rem; background: #f8f8f8; }
+@media (max-width: 40rem) { .draft-heading, .diagnostic-draft .draft-read-row { flex-direction: column; } }
