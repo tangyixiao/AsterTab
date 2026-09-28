@@ -12,7 +12,7 @@ Date: 2026-09-28 (Asia/Shanghai). Scope: `ai <request>` local draft, selected pu
 | `npm run build` | Exit 0; WXT 0.21.4 produced Chrome MV3 new-tab build. |
 | `npm run build:edge` | Exit 0; WXT 0.21.4 produced Edge MV3 new-tab build. |
 
-Both production manifests contain exactly two `optional_host_permissions`: `https://www.luogu.com.cn/*` and `https://api.github.com/*`. Neither contains required `permissions`, `host_permissions`, a background worker, or content scripts. The generated new-tab page uses packaged HTML, JS, and CSS. The final production JS chunk was 26.18 kB in each build; this is a bundle observation, not a performance target.
+Both production manifests contain exactly two `optional_host_permissions`: `https://www.luogu.com.cn/*` and `https://api.github.com/*`. Neither contains required `permissions`, `host_permissions`, a background worker, or content scripts. The generated new-tab page uses packaged HTML, JS, and CSS. The final production JS chunk was 26.29 kB in each build; this is a bundle observation, not a performance target.
 
 ## Real Edge new-tab checks
 
@@ -30,6 +30,8 @@ An isolated temporary Edge profile loaded the final `D:\AsterTab\.output\edge-mv
 With CDP network emulation set to offline before reloading the new tab, the input and `ai offline` draft remained usable. `Network.requestWillBeSent` recorded only three extension-origin resources: new-tab HTML, its packaged JS chunk, and its packaged CSS. It recorded no external-origin request for that flow.
 
 Clicking `读取此题面` for valid P1001 in the hidden automated Edge run left the button at `读取中…` while the browser's optional host permission prompt awaited a user choice. Therefore this run does **not** verify a completed permission grant or live source fetch in Edge. Unit tests verify exact request targets, omitted credentials, redirect rejection, response limits, and parsed content under injected responses. Separately, a read-only host request for the public P1001 page returned HTTP 200 and included `lentille-context` problem data. A read-only request to the public GitHub Contents API returned HTTP 403 (`rate limit exceeded`) from this machine; the added test verifies that the UI reader reports a useful 403 error and does not try another endpoint.
+
+Independent code review found that a GitHub `blob/<ref>/<path>` URL can silently identify the wrong file when a slash-containing branch name overlaps a tag and file path. Automated GitHub reading was therefore restricted to URLs with a 40-hex commit SHA; ordinary branch/tag URLs now give a local error and retain the paste fallback. A regression test failed before this change and passed afterward. The final SHA restriction was verified by unit tests and production builds; the Edge UI observations above were captured before this last source-reader change.
 
 ## Limits and cleanup
 

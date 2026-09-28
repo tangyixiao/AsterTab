@@ -72,7 +72,7 @@
 **Interfaces:**
 - Produce: `readLuoguProblem(inputUrl: string, fetcher: typeof fetch): Promise<DiagnosticSource>` and `readGitHubFile(inputUrl: string, fetcher: typeof fetch): Promise<DiagnosticSource>`; invalid URLs throw before any fetch.
 - Luogu accepts only `https://www.luogu.com.cn/problem/<id>` with no credentials, query, or fragment. It extracts title, statement, input/output formats, samples, and hint from the public page's `lentille-context` JSON; if the structure changes, it fails closed and offers paste fallback.
-- GitHub accepts only `https://github.com/<owner>/<repo>/blob/<single-segment-ref>/<file-path>` with no credentials, query, or fragment. It calls the fixed `https://api.github.com/repos/<owner>/<repo>/contents/<file-path>?ref=<ref>` endpoint, rejects non-file/oversize/non-base64 results, and decodes selected file text. Slash-containing branch refs require a permalink or pasted code.
+- GitHub accepts only `https://github.com/<owner>/<repo>/blob/<40-hex-commit-SHA>/<file-path>` with no credentials, query, or fragment. It calls the fixed `https://api.github.com/repos/<owner>/<repo>/contents/<file-path>?ref=<SHA>` endpoint, rejects non-file/oversize/non-base64 results, and decodes selected file text. Branch and tag URLs have an ambiguous ref/path boundary; users use a commit permalink or paste code.
 - Both readers reject redirects, omit credentials, check response status and bound response/body size. No generic URL fetch helper is exported.
 - `wxt.config.ts` declares exactly `https://www.luogu.com.cn/*` and `https://api.github.com/*` as `optional_host_permissions`, with no required host permissions.
 

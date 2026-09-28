@@ -162,7 +162,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
         <legend>GitHub 代码</legend>
         <label for="code-url">公开文件 URL</label>
         <div class="draft-read-row">
-          <input id="code-url" type="url" value={codeInputUrl} placeholder="https://github.com/owner/repo/blob/main/file.cpp" onInput={event => {
+          <input id="code-url" type="url" value={codeInputUrl} placeholder="https://github.com/owner/repo/blob/提交SHA/file.cpp" onInput={event => {
             readVersion.current.code++;
             setCodeInputUrl(event.currentTarget.value);
             if (codeSourceUrl) { setCodeText(""); setCodeSourceUrl(undefined); }
@@ -171,7 +171,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
           }} />
           <button type="button" disabled={codeLoading} onClick={() => { void readCode(); }}>{codeLoading ? "读取中…" : "读取此文件"}</button>
         </div>
-        <p class="draft-help">只读取这个公开文件。带斜杠的分支名请使用文件永久链接，或粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
+        <p class="draft-help">只读取这个公开文件。自动读取仅支持包含 40 位提交 SHA 的文件永久链接；其他情况请粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
         <label for="code-label">显示名称</label>
         <input id="code-label" value={codeLabel} maxLength={200} onInput={event => setCodeLabel(event.currentTarget.value)} />
         <label for="code-text">代码内容</label>

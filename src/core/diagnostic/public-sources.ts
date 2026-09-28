@@ -29,9 +29,8 @@ export function parseGitHubFileUrl(input: string): { owner: string; repo: string
   const segments = url.pathname.split("/").slice(1).map(segment => decodeURIComponent(segment));
   if (segments.length < 5 || segments[2] !== "blob") throw new Error("请输入 GitHub 单个文件的 blob URL。");
   const [owner, repo, , ref, ...filePath] = segments;
-  if (!owner || !repo || !ref || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo) || !/^[A-Za-z0-9_.-]+$/.test(ref)) {
-    throw new Error("GitHub 仓库或引用无效。");
-  }
+  if (!owner || !repo || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repo)) throw new Error("GitHub 仓库无效。");
+  if (!ref || !/^[0-9a-f]{40}$/i.test(ref)) throw new Error("请使用包含 40 位提交 SHA 的 GitHub 文件永久链接。");
   if (filePath.some(segment => !segment || segment === "." || segment === ".." || /[\\/\x00-\x1f]/.test(segment)) || filePath.join("/").length > 500) {
     throw new Error("GitHub 文件路径无效。");
   }
