@@ -81,10 +81,11 @@ GitHub App 用户访问受 App 与用户双方许可限制；实际集成还必�
 ## 5. AI 上下文与隐私
 
 - 上下文按单次任务即时组装，仅包含用户所选来源中预览可见的字段/片段和本次请求。
-- 审阅界面明确显示目标 Provider，以及实际发送的文本/代码内容；不能用“将发送相关上下文”之类笼统描述替代内容预览。
+- 审阅界面明确显示目标 Provider、模型 ID、完整请求正文和实际发送的文本/代码内容；不能用“将发送相关上下文”之类笼统描述替代内容预览。
 - 只有用户确认后才发出该次请求。Provider 未配置时不得尝试其他 Provider。
+- Provider key 与模型配置分开保存：OpenRouter key 仅在用户明确保存后放入当前浏览器会话内存；模型 ID 是本机偏好，不同步。key 不进入请求正文、日志、遥测或上下文。
 - 原始题面、提交、代码、请求和响应默认不进入长期历史、遥测、同步或用户画像。任务结束后不保存其原始上下文；保存/导出能力不在本 Spec 范围内。
-- Provider 可能按自身政策处理或保留收到的数据；发送前需显示实际 Provider，并提供清楚的数据外发提示。
+- Provider 可能按自身政策处理或保留收到的数据；发送前需显示实际 Provider、所选模型和清楚的数据外发提示。若 Provider 会把输入转交给模型服务商，还需明确提示服务商政策可能不同。
 - Provider 认证凭据与 GitHub 访问令牌彼此分离，均不得进入模型上下文、诊断日志或分析事件。
 
 ## 6. 诊断行为
@@ -120,6 +121,7 @@ AI 输出是诊断和建议，不具有读取、联网、执行、提交或写�
 
 - Preact UI 负责输入、来源选择、状态、预览、确认和结果呈现；不包含服务 URL、认证流程、权限策略或 Agent 决策。
 - Command Engine 仍负责显式命令分类；普通搜索路径不改变。
+- OpenRouter 固定端点、请求构造和响应解析位于 `src/integrations/ai/openrouter.ts`；API key 的会话生命周期及模型本机设置见 [ADR-0002](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)。在有第二个真实 Provider 之前不预建通用 Provider registry。
 - 来源读取只通过面向本用例的窄函数/适配器完成。首版最多实现具体的洛谷题面读取、选定提交的用户输入、GitHub 选定文件读取；不为尚不存在的第二种能力预建通用 registry、Executor、plugin runtime 或大而全 Adapter interface。
 - Context 只表示本任务经过选择和裁剪后的资料；默认不沉淀为跨任务画像。
 - AI 请求只能携带已预览且已确认的 payload。模型返回普通诊断结果或受限诊断字段，不接收可执行代码、任意函数名或工具调用授权。
@@ -138,13 +140,13 @@ AI 输出是诊断和建议，不具有读取、联网、执行、提交或写�
 7. 单来源失败不阻断其他来源；AI 故障不自动更换 Provider、后台重试或扩大读取范围。
 8. 默认诊断覆盖学习阶段、引用证据、说明不确定性并给最小下一步；完整解法需要明确请求。
 9. 首屏在离线、AI 未配置或服务不可用时仍能使用确定性 Command Center。
-10. 生产包权限仅包含实现已批准来源所必需的权限；开发权限不泄漏到生产包。
+10. 生产包除存储 API 所需的 `storage` permission 外，不声明所选主机为 required host permission；`https://openrouter.ai/*` 与已批准来源保持 optional。不得包含 background worker 或 content script。
 
 ## 10. 实现前待核验项
 
 这些事项不阻止本工作流 Spec 成文，但必须在写 implementation plan 前有明确决定/证据：
 
-1. 首个支持的 AI Provider、用户凭据配置方式、固定 API host 和 Provider 数据政策呈现方式。
+1. **已解决（2026-09-29）：** 用户选择 OpenRouter API key。固定 endpoint、会话内存 key、本机模型 ID、按需 host 权限和服务商数据政策提示见 [ADR-0002](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)。
 2. GitHub App 的仓库选择、MV3 回调、PKCE、令牌保存/刷新/撤销方案是否能在不增加未批准后端的前提下通过安全审核；否则首版关闭私有 API 读取。
 3. Luogu 单题公共页面的读取方式、可用性与维护成本；无法可靠读取时以用户粘贴题面回退。近期提交路径不依赖个人历史 API。
 4. Chrome/Edge 对按需 host 权限、生产权限和扩展 OAuth 回调的真实行为验收。
