@@ -56,11 +56,11 @@
 - Produce: `buildContextPreview(request: string, sources: readonly DiagnosticSource[]): string`.
 - Sources may also have a canonical `url?: string`. Empty or whitespace-only source text is omitted; nonempty source text is trimmed, kept in input order, and shown with its kind, label, and URL. The request is always first.
 
-- [ ] Write tests for exact preview order, removed source omission, empty text omission, and treating script-like text as plain text.
-- [ ] Run `npm test -- tests/diagnostic/context-preview.test.ts`; expect failure because the module is absent.
-- [ ] Implement `buildContextPreview` with no browser or network imports.
-- [ ] Run `npm test -- tests/diagnostic/context-preview.test.ts`; expect all tests to pass.
-- [ ] Stage only the two files and commit `feat: build local diagnostic context preview`.
+- [x] Write tests for exact preview order, removed source omission, empty text omission, and treating script-like text as plain text.
+- [x] Run `npm test -- tests/diagnostic/context-preview.test.ts`; expect failure because the module is absent.
+- [x] Implement `buildContextPreview` with no browser or network imports.
+- [x] Run `npm test -- tests/diagnostic/context-preview.test.ts`; expect all tests to pass.
+- [x] Stage only the two files and commit `feat: build local diagnostic context preview`.
 
 ### Task 2: Fixed public source readers
 
@@ -76,11 +76,11 @@
 - Both readers reject redirects, omit credentials, check response status and bound response/body size. No generic URL fetch helper is exported.
 - `wxt.config.ts` declares exactly `https://www.luogu.com.cn/*` and `https://api.github.com/*` as `optional_host_permissions`, with no required host permissions.
 
-- [ ] Write failing tests for accepted/blocked URLs, exact request target/options, valid selected content, non-file response, redirect, and oversize response.
-- [ ] Run `npm test -- tests/diagnostic/public-sources.test.ts`; expect failure because the reader module is absent.
-- [ ] Implement the two readers and exact optional host patterns.
-- [ ] Run `npm test -- tests/diagnostic/public-sources.test.ts` and `npm run typecheck`; expect success.
-- [ ] Stage only the reader, test, and config files and commit `feat: read selected public diagnostic sources`.
+- [x] Write failing tests for accepted/blocked URLs, exact request target/options, valid selected content, non-file response, redirect, and oversize response.
+- [x] Run `npm test -- tests/diagnostic/public-sources.test.ts`; expect failure because the reader module is absent.
+- [x] Implement the two readers and exact optional host patterns.
+- [x] Run `npm test -- tests/diagnostic/public-sources.test.ts` and `npm run typecheck`; expect success.
+- [x] Stage only the reader, test, and config files and commit `feat: read selected public diagnostic sources`.
 
 ### Task 3: Local draft UI
 
@@ -94,11 +94,11 @@
 - The two read controls request only their fixed origin via WXT's `browser.permissions.request` in the user click handler, then call Task 2's reader. Permission denial and source failure leave other entries intact and show a paste fallback. The read operation never occurs on render or URL typing.
 - `CommandCenter` opens this component only for `ParsedCommand.kind === "agent"`; closing restores the command input and clears the request and draft.
 
-- [ ] Extend the parser tests only if routing reveals a parser regression; keep existing command semantics unchanged.
-- [ ] Implement the draft with Preact state, URL fields and read controls, textareas, source include controls, a full text preview, and a close control. Render pasted values through Preact text nodes.
-- [ ] Connect the existing Agent branch in `CommandCenter` to the draft; preserve empty and search branches.
-- [ ] Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run build:edge`; expect all to pass.
-- [ ] Stage only the three UI files and commit `feat: add local diagnostic draft`.
+- [x] Extend the parser tests only if routing reveals a parser regression; keep existing command semantics unchanged.
+- [x] Implement the draft with Preact state, URL fields and read controls, textareas, source include controls, a full text preview, and a close control. Render pasted values through Preact text nodes.
+- [x] Connect the existing Agent branch in `CommandCenter` to the draft; preserve empty and search branches.
+- [x] Run `npm test`, `npm run typecheck`, `npm run build`, and `npm run build:edge`; expect all to pass.
+- [x] Stage only the three UI files and commit `feat: add local diagnostic draft`.
 
 ### Task 4: Browser and manifest acceptance
 
@@ -108,10 +108,10 @@
 **Interfaces:**
 - No production interface. Record observed Chrome and Edge behavior and exact generated manifest permissions.
 
-- [ ] Load both production builds in isolated Chrome and Edge profiles and exercise each Review Focus case, ordinary search, and offline draft creation. Test one public Luogu read and one public GitHub file read where the service is reachable; otherwise record the network limitation and the paste fallback.
-- [ ] Inspect both `.output/*-mv3/manifest.json` files; expect only the two named `optional_host_permissions`, no required `permissions` or `host_permissions`, background service worker, or content scripts.
-- [ ] Record commands, browser versions, observations, and limits in the acceptance document.
-- [ ] Stage only the acceptance document and commit `docs: verify local diagnostic draft`.
+- [x] Load both production builds in isolated Chrome and Edge profiles and exercise each Review Focus case, ordinary search, and offline draft creation. Test one public Luogu read and one public GitHub file read where the service is reachable; otherwise record the network limitation and the paste fallback.
+- [x] Inspect both `.output/*-mv3/manifest.json` files; expect only the two named `optional_host_permissions`, no required `permissions` or `host_permissions`, background service worker, or content scripts.
+- [x] Record commands, browser versions, observations, and limits in the acceptance document.
+- [x] Stage only the acceptance document and commit `docs: verify local diagnostic draft`.
 
 ## Self-review
 
