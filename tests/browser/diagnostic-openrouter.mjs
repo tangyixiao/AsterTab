@@ -165,9 +165,11 @@ try {
     // Live: permissions.request inside the click handler opens the NATIVE prompt
     // (first grant in this profile) and the send flow resumes automatically once
     // a human approves. Grant is persisted per profile, so later runs skip it.
+    // Fail fast BEFORE clicking send so a doomed headless run never issues a
+    // real permissions.request.
+    if (!headed) throw new Error("--live needs --headed: the native host-permission prompt must be approved by a human.");
     await confirm();
     await send().click();
-    if (!headed) throw new Error("--live needs --headed: the native host-permission prompt must be approved by a human.");
     console.log("ACTION NEEDED: approve the native OpenRouter host permission prompt in the browser window (Ctrl+C aborts).");
     await page.waitForFunction(
       () => chrome.permissions.contains({ origins: ["https://openrouter.ai/*"] }),
