@@ -113,3 +113,36 @@ node tests/browser/diagnostic-openrouter.mjs --playwright-core 'D:\tangyixiao.gi
 ```
 
 These results supersede the earlier absence of browser UI checks for repeatable entries and OpenRouter sending. **Native permission-prompt interaction, a real host grant and live OpenRouter inference remain unverified.** No real key or paid API call was used. The response fixes were reviewed locally and verified by regression tests; this follow-up does not claim a separate reviewer, CI result, commit or push.
+
+## Live host-permission prompt and real-endpoint verification
+
+Date: 2026-10-17 (Asia/Shanghai). This follow-up extends the [browser harness](../../tests/browser/diagnostic-openrouter.mjs) with `--live` / `--headed` and drops the attempted `--pre-grant` route: CDP `Browser.grantPermissions` only governs page content permissions, not extension optional host permissions, so a pre-grant cannot bypass the native prompt. Live mode drives the real `chrome.permissions.request` flow instead. This supersedes the preceding section's note about the native prompt and host grant; a successful live inference with a real key is still open.
+
+Two harness corrections were verified before the live run:
+
+1. Pending-permission race (found as a Chrome-only flake at harness check 6): the edit's re-render flushes on a macrotask while the permission resolve callback is a microtask, so on Chrome the resumed send could read the stale payload before the new preview committed. The harness now waits until `#openrouter-request-preview` contains the edited request text before resolving the stubbed permission; both browsers then pass deterministically.
+2. Live-path split: live mode skips the stub-only checks (denial, pending edit, intercepted fakes), refuses to run without `--headed` because the native prompt needs a human, and waits up to 300 s for `chrome.permissions.contains` before asserting the real 401 flow.
+
+| Gate | Fresh observation |
+| --- | --- |
+| `node --check tests/browser/diagnostic-openrouter.mjs` | Exit 0. |
+| Edge stub regression | Edge 155.0.4283.45; all 10 checks passed; 3 intercepted fakes; no unexpected external requests; no page errors. |
+| Chrome stub regression | Chrome 155.0.8059.84; all 10 checks passed with the same counts; previously flaky at check 6, now deterministic. |
+| Edge live run | Edge 155.0.4283.45; 9 live checks passed, mode `live`. |
+
+The live run loaded the production Edge build into an isolated persistent profile and used the default disposable sentinel key `sk-or-browser-test-only` — no real API key and no paid call. A human approved the native host-permission prompt in the visible browser window. Observed:
+
+| Live step | Observed result |
+| --- | --- |
+| Native prompt | Appeared once, was approved by a human, after which `chrome.permissions.contains({ origins: ["https://openrouter.ai/*"] })` returned true; the grant persisted in the profile. |
+| Real send | The confirmed request reached the real `https://openrouter.ai/api/v1/chat/completions` with the preview body and `Bearer` sentinel key; OpenRouter answered HTTP 401 and the UI surfaced the 401 alert, preserved the source preview, hid the raw provider detail, rendered no result, consumed the confirmation and did not retry. |
+| Second send | No prompt appeared (persisted grant); the request reached the real endpoint again. |
+| Boundary | No unexpected external page request; no page errors. |
+
+With `--headed` the harness leaves the browser open after reporting checks for manual inspection; closing the window ends the run. A live run needs an existing Playwright installation:
+
+```powershell
+node tests/browser/diagnostic-openrouter.mjs --live --headed --playwright-core 'D:\tangyixiao.github.io\node_modules\playwright-core\index.mjs'
+```
+
+**Successful live inference with a real API key remains unverified.** With the browser left open after the checks, entering a real key manually and sending once would complete that path; the harness itself keeps runs keyless by default.
