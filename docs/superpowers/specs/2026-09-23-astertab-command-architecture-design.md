@@ -1,12 +1,14 @@
 # AsterTab 命令架构设计 Spec
 
-> **状态：Approved（2026-09-24，用户审核通过）。** 本文定义产品核心模块的职责、数据流和约束；批准 Spec 不代表批准 implementation plan 或授权开始实现。
+> **状态：Approved（2026-09-24，用户审核通过）。** 本文定义产品核心模块的职责、数据流和约束；批准 Spec 不代表批准 implementation plan 或授权开始实现。2026-11-04 仅做实现状态同步与勘误，未变更设计决策。
 
 - 日期：2026-09-24（adversarial self-review 修订）
 - 范围：Command Center 确定性核心及其通往未来 Agent 工作流的边界
 - 产品依据：[`PROJECT.md`](../../../PROJECT.md)、[`AGENTS.md`](../../../AGENTS.md)
-- 技术栈决策：已采纳的 [`ADR-0001`](../../decisions/ADR-0001-wxt-preact-extension-stack.md)
-- 待审实施计划：[`2026-09-23-astertab-command-foundation.md`](../plans/2026-09-23-astertab-command-foundation.md)
+- 技术栈决策：已采纳的 [`ADR-0001`](../../decisions/ADR-0001-wxt-preact-extension-stack.md)、[`ADR-0002`](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)
+- 待审实施计划：[`2026-09-23-astertab-command-foundation.md`](../plans/2026-09-23-astertab-command-foundation.md)、[`2026-09-27-astertab-diagnostic-local-context.md`](../plans/2026-09-27-astertab-diagnostic-local-context.md)
+- 相关工作流 Spec：[`2026-09-25-astertab-learning-diagnostic-workflow-design.md`](2026-09-25-astertab-learning-diagnostic-workflow-design.md)
+- 验收记录：[`command-center-first-slice-acceptance.md`](../../testing/command-center-first-slice-acceptance.md)、[`diagnostic-local-context-acceptance.md`](../../testing/diagnostic-local-context-acceptance.md)
 
 ## 1. 目标与设计原则
 
@@ -266,7 +268,7 @@ Agent / LLM / provider SDK；service worker；content script；浏览历史、�
 2. ai 命令是当前显式语义入口，不将长期产品概念固定为 AI 等于 Agent。
 3. 首切片不添加为未来 Agent 准备的占位接口、通用框架或 runtime。
 
-## 参考资料## 参考资料
+## 参考资料
 
 - [Chrome：Declare permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions)
 - [Chrome：`chrome.permissions` API](https://developer.chrome.com/docs/extensions/reference/api/permissions)
@@ -274,3 +276,26 @@ Agent / LLM / provider SDK；service worker；content script；浏览历史、�
 - [Chrome：Message passing](https://developer.chrome.com/docs/extensions/develop/concepts/messaging)
 - [Chrome：Extension service worker lifecycle](https://developer.chrome.com/docs/extensions/develop/concepts/service-workers/lifecycle)
 - [Chrome：`chrome.storage` API](https://developer.chrome.com/docs/extensions/reference/api/storage)
+
+## 实现状态同步（2026-11-04）
+
+> 本节只记录截至 2026-11-04 的实现与验收事实，用于把本 Spec 与仓库当前状态对齐；不新增、修订或推翻任何设计决策。正文写于第一纵向切片之前，其中「首个工程切片」「未来 Agent 纵向流程另行设计」「首版」「后续」等前瞻措辞是当时的时间视角，保留原样以忠实反映批准时的边界；§1 的七条边界原则、§5 的两层授权模型、§10 的第一切片边界与 §12 的审批记录均保持原样、继续有效。
+
+### 已实现并验收
+
+- **第一纵向切片（确定性 Command Center）已实现并验收。** 见 [`command-center-first-slice-acceptance.md`](../../testing/command-center-first-slice-acceptance.md) 与 [`2026-09-23-astertab-command-foundation.md`](../plans/2026-09-23-astertab-command-foundation.md)。WXT + MV3 + TypeScript + Preact 新标签入口、确定性命令解析、固定 HTTPS 搜索路由、离线首屏及 Chrome / Edge 生产构建与 manifest 审计均有实际验收记录。
+- **其后的学习诊断增量已实现并验收。** 见 [`diagnostic-local-context-acceptance.md`](../../testing/diagnostic-local-context-acceptance.md)、[`2026-09-27-astertab-diagnostic-local-context.md`](../plans/2026-09-27-astertab-diagnostic-local-context.md) 与 [`ADR-0002`](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)。范围为显式 `ai <request>` 打开的资料草稿：洛谷题目、用户选定提交、GitHub **公开**文件的读取与审阅预览，以及在用户确认后由固定 OpenRouter 端点完成的**单次**诊断请求；工作流设计见 [`2026-09-25-astertab-learning-diagnostic-workflow-design.md`](2026-09-25-astertab-learning-diagnostic-workflow-design.md)。实现按 ADR-0002 保持无 tools/function calling、无对话历史、无自动重试或模型回退、无后台调用。
+
+### 当前结构
+
+- 仍是**单层单扩展**结构：`src/core` → `src/integrations/ai` → `src/app`，`entrypoints/newtab` 为唯一入口。
+- 没有按 [`PROJECT.md`](../../../PROJECT.md) §26 的推荐仓库形状拆分为 `apps/` / `packages/`，也没有引入 registry、service worker 或 content script；生产 manifest 仅声明 `storage` 权限与按需申请的 optional host permissions。
+- 这与 §1 第 6 条「先有用例、再抽象」及 §10「首切片不为此创建 Agent/Tool registry、通用 Adapter interface 或后台 runtime」一致，属于按真实用例逐步加法的预期形态，不是设计变更。
+
+### 仍未实现（明确未完成的边界）
+
+- **多轮诊断交互**（追加来源、回答追问、逐层深入后重新审阅与确认的连续会话）未实现；当前只做单次、经预览确认的诊断请求。
+- **GitHub 私有仓库访问**未实现；当前 GitHub 读取仅限用户指定的公开文件，并保留粘贴代码回退。
+- **真实 API key 的成功 live 推理验证**未完成；此前的 live 运行使用一次性 sentinel key，仅验证了真实端点可达与 HTTP 401 失败路径，未做付费成功推理。
+
+以上三项不得由本节前述「已验收」推断为已完成。
