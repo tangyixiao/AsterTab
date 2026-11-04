@@ -29,28 +29,36 @@ The project must **connect tools rather than rebuild them**.
 
 ## 2. Current Stage
 
-The project is currently in the:
+**Current state (implemented baseline).** AsterTab's first vertical slice - the deterministic Command Center (`parse-command`, `build-search-url`, and the WXT/Preact new-tab UI) - and the learning-diagnostic increment (Luogu problem pages, pasted submissions, public GitHub file permalinks, and a single-shot OpenRouter diagnosis gated by explicit per-send confirmation) are implemented, verified, and merged via PR #1 and PR #2. The extension stack was decided in [ADR-0001](docs/decisions/ADR-0001-wxt-preact-extension-stack.md): WXT 0.21.4, Preact 10.29.8, TypeScript 6.0.3, Vite 8.3.0, Vitest 5.0.1, a Manifest V3 new-tab override, and `browser.storage.session` for the OpenRouter key. The production manifest declares only the `storage` permission plus three `optional_host_permissions` (`https://www.luogu.com.cn/*`, `https://api.github.com/*`, `https://openrouter.ai/*`). For the authoritative product/scope wording see [PROJECT.md](PROJECT.md) ("Current Product State"); acceptance evidence is in [docs/testing/command-center-first-slice-acceptance.md](docs/testing/command-center-first-slice-acceptance.md) and [docs/testing/diagnostic-local-context-acceptance.md](docs/testing/diagnostic-local-context-acceptance.md), and the workflow design is in [docs/superpowers/specs/2026-09-25-astertab-learning-diagnostic-workflow-design.md](docs/superpowers/specs/2026-09-25-astertab-learning-diagnostic-workflow-design.md).
 
-```text
-product definition
-        ↓
-architecture design
-        ↓
-technical planning
-```
+> **Historical note (2026-09-23):** The stage description and guardrails below are preserved verbatim as the original planning-stage record; see the current-state paragraph above and the scoping note below.
+>
+> The project is currently in the:
+>
+> ```text
+> product definition
+>         ↓
+> architecture design
+>         ↓
+> technical planning
+> ```
+>
+> stage.
+>
+> Unless the user explicitly asks for implementation:
+>
+> - do not scaffold the project;
+> - do not install dependencies;
+> - do not choose a framework as if it were already decided;
+> - do not generate large amounts of production code;
+> - do not silently create infrastructure;
+> - do not prematurely split the project into multiple repositories/services.
+>
+> Planning artifacts are allowed.
 
-stage.
+**Scope of the guardrails (unchanged).** The six guardrails above still govern all NEW / not-yet-implemented work and any speculative infrastructure - consistent with §16 Architecture Direction, §19 Scope Control / YAGNI, and §30 Explicit Non-Goals. They are a forward-looking constraint on future work, NOT a description of the already-shipped code above; nothing in this sync relaxes, deletes, or softens them. Specifically, the following remain unimplemented: multi-turn diagnostic interaction / follow-up questions, GitHub private-repository access, a second AI provider or provider registry, any sync backend, and a successful live-inference check with a real API key.
 
-Unless the user explicitly asks for implementation:
-
-- do not scaffold the project;
-- do not install dependencies;
-- do not choose a framework as if it were already decided;
-- do not generate large amounts of production code;
-- do not silently create infrastructure;
-- do not prematurely split the project into multiple repositories/services.
-
-Planning artifacts are allowed.
+> Synced 2026-11-04 to the implemented baseline; no design decisions or guardrails changed.
 
 ---
 
