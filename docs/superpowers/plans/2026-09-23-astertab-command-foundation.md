@@ -659,3 +659,12 @@ export function CommandCenter(props: CommandCenterProps): JSX.Element;
 - [GitHub repository search behavior](https://docs.github.com/en/search-github/searching-on-github/searching-for-repositories)
 - [GitHub repository search route example](https://github.com/search?q=react&type=repositories)
 - [Luogu problem list route with keyword parameter](https://www.luogu.com.cn/problem/list?keyword=astertab&page=1)
+
+## 实现状态补记（2026-11-04）
+
+> 本节是对历史计划的现状补记，不修改上文任何任务原文，也不构成新的实现授权。
+
+- **5 个 Task 均已实现并验收。** 第一切片的生产构建、权限与浏览器验收记录见 [`docs/testing/command-center-first-slice-acceptance.md`](../../testing/command-center-first-slice-acceptance.md)；后续学习诊断本地上下文增量的验收记录见 [`docs/testing/diagnostic-local-context-acceptance.md`](../../testing/diagnostic-local-context-acceptance.md)。当前 `npm test` 为 9 files / 65 tests passed。
+- **第一切片与诊断增量均已合入 main。** main 历史中已合并 PR #1、#2、#3、#4；其中 PR #4 为 `vitest.config.ts` → `vitest.config.mts` 的 `git mv` 重命名（R100，内容 0 变化）。本补记不展开或推断各 PR 的其他内容。
+- **本计划仍是历史产物。** 它记录撰写当时的任务顺序、命令、版本与验收方式，仅供追溯；头部 `状态：待最终审核；不构成实现授权。` 保持不变，不授权重新实现、不重跑 Task，也不改动产品方向或代码。
+- **唯一陈旧引用的说明（原文逐字保留）。** 文中 L60 表格、L211 `Create: vitest.config.ts`、L241 任务项、L306 `git add vitest.config.ts ...` 四处仍写旧名；这些是历史原文，不做逐处替换。文中所有 `vitest.config.ts` 指同一文件、现名 `vitest.config.mts`，重命名 R100 零内容变化，消除了 Vite 的 ESM-as-CJS 警告；当前 `npm test` 输出不再含 `(!) ... ESM syntax in a file loaded as CommonJS` 警告。
