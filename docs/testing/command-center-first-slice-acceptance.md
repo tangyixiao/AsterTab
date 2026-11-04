@@ -65,3 +65,35 @@ FCP is a render observation only. No performance threshold or production instrum
 ## Cleanup
 
 `Browser.close` was sent to both isolated CDP endpoints after the network checks and again after the restarted-browser FCP run. Both process-holding terminal sessions then exited with code 0. A final process and socket query returned no Chrome/Edge command line containing the two acceptance profile names and no listeners on CDP ports `10345` or `10346`. No development server was started. The temporary profile data was retained; the regular user profiles were not opened.
+
+## Known non-blocking note (PR #1)
+
+The merged PR #1 body recorded the following note; it is reproduced here verbatim as historical context:
+
+> Known non-blocking note: Vitest reports that vitest.config.ts uses ESM syntax while being loaded as CommonJS.
+
+The historical warning itself was Vite's `ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1)`. It is also the `existing Vite native-config warning` referenced in the original `npm test` gate row above (2026-09-25, 2 test files / 27 tests). It was a non-blocking configuration warning, not a test failure.
+
+### Resolved (2026-11-04)
+
+PR #4 (`chore(test): load vitest config as ESM to drop CJS warning`, merged into main as `f58155d`) resolved this note with `git mv vitest.config.ts vitest.config.mts` — an R100 rename with zero content change (`1 file changed, 0 insertions(+), 0 deletions(-)`; `similarity index 100%`). The `.mts` extension makes Vitest load the config natively as ESM. On the merged main, `npm test` output now begins directly with the Vitest banner and the `ESM syntax in a file loaded as CommonJS` warning no longer appears. The original note and all historical measurements above are kept unchanged; this entry records the resolution only.
+
+## Re-verification on merged main (2026-11-04)
+
+This section records a fresh verification against the merged main (`f58155d`), after PR #1–#4 had landed. It is additive: none of the original 2026-09-25 measurements above (Chrome `153.0.8010.54` / Edge `153.0.4234.48`, Node `v26.9.0` / npm `11.19.0`, the FCP medians `40 ms` / `60 ms`, the offline first-screen result, or the `15,397`-byte production JS chunks) were re-measured, overwritten, or promoted to current values — they remain historical records of that first-slice run.
+
+| Gate | Observation on merged main | Result |
+| --- | --- | --- |
+| `npm test` | Exit 0; 9 files, 65 tests passed; no ESM-as-CJS / CommonJS warning; output starts at the Vitest banner | PASS |
+| `npm run typecheck` | Exit 0; `tsc --noEmit` printed no diagnostics | PASS |
+| `npm run build` | Exit 0; built `.output/chrome-mv3`: JS 39.23 kB, CSS 1.76 kB | PASS |
+| `npm run build:edge` | Exit 0; built `.output/edge-mv3`: JS 39.23 kB, CSS 1.76 kB | PASS |
+
+Production-manifest and repository follow-up on the same merged tree:
+
+- Both generated production manifests still require only `storage` as a required permission. Luogu (`https://www.luogu.com.cn/*`), `api.github.com` (`https://api.github.com/*`), and `openrouter.ai` (`https://openrouter.ai/*`) remain `optional_host_permissions` (see [wxt.config.ts](../../wxt.config.ts)); no required `host_permissions`, background worker, or content script was introduced.
+- `README.md` is no longer the placeholder (`PR #3` replaced it with the full project guide).
+- `PROJECT.md`, `AGENTS.md`, the Command Center first-slice implementation plan, and the command-architecture spec are now under version control (`PR #2`).
+- The `vitest.config.ts` → `vitest.config.mts` rename from `PR #4` is present in the tree; see the resolution note above.
+
+The two build gates and the manifest inspection in this section are the lead's results from the merged tree (`f58155d`); `npm test` and `npm run typecheck` were also re-run in this worktree before committing this record. No product direction, code, or configuration was changed by this documentation update.
