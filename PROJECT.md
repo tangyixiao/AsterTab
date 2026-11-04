@@ -810,16 +810,45 @@ When two design options conflict, prefer in this order:
 
 # 29. Current Product State
 
-The project is currently in the **product-definition / architecture-planning stage**.
+The first slice and the learning-diagnostic increment are **implemented and accepted**. The deterministic Command Center (plain-text search and `g` / `gh` / `lg` commands parsed and routed to fixed HTTPS URLs without an LLM) and the single-shot learning diagnostic (Luogu statement, manually pasted submissions, and GitHub public files → one explicitly confirmed OpenRouter diagnosis) have both landed (PR #1 / #2) and passed acceptance.
 
-Do not assume implementation choices have already been made.
+Verified baseline on the merged tree:
 
-Technology stack, framework, storage engine, AI SDK, sync backend, and UI framework remain open unless separately specified by the user.
+- `npm test`: 9 files / 65 tests passed.
+- `npm run typecheck`: exit 0.
+- `npm run build` and `npm run build:edge`: exit 0 (Chrome / Edge Manifest V3 production builds).
+- Production Manifest: the only required permission is `storage`; other hosts remain optional.
 
-Before major implementation, derive a concrete technical plan from this product brief.
+Records and sources: [command-center-first-slice-acceptance.md](docs/testing/command-center-first-slice-acceptance.md), [diagnostic-local-context-acceptance.md](docs/testing/diagnostic-local-context-acceptance.md), [ADR-0002-openrouter-diagnostic-integration.md](docs/decisions/ADR-0002-openrouter-diagnostic-integration.md), [package.json](package.json), [wxt.config.ts](wxt.config.ts).
+
+The following stack and integration choices are **already implemented facts**, not new decisions made by this document: WXT 0.21.4 + Preact 10.29.8 + TypeScript 6.0.3 + Vite 8.3.0 + Vitest 5.0.1; Manifest V3; the OpenRouter API key kept in `browser.storage.session` and the model ID in `storage.local`; a fixed OpenRouter endpoint; and no provider registry, background service worker, or content script. See [package.json](package.json), [wxt.config.ts](wxt.config.ts), and [ADR-0002-openrouter-diagnostic-integration.md](docs/decisions/ADR-0002-openrouter-diagnostic-integration.md).
+
+> Historical note (2026-09-23):
+>
+> The lines below are the original §29 text, written during the product-definition / architecture-planning stage, before implementation began. They are retained verbatim as a historical record and are superseded by the implemented baseline above; they no longer describe the current state.
+>
+> ```text
+> # 29. Current Product State
+> The project is currently in the **product-definition / architecture-planning stage**.
+> Do not assume implementation choices have already been made.
+> Technology stack, framework, storage engine, AI SDK, sync backend, and UI framework remain open unless separately specified by the user.
+> Before major implementation, derive a concrete technical plan from this product brief.
+> ```
+
+The guardrail "Do not assume implementation choices have already been made" now applies **only to the areas below, which are still unimplemented or unverified**. Do not treat any of them as decided or shipped:
+
+1. Multi-turn diagnostic interaction (only a single confirmed diagnosis exists).
+2. GitHub private-repository access (only public files at 40-hex commit SHA URLs are read).
+3. A second AI Provider (only the fixed OpenRouter path is wired; no provider registry exists).
+4. A sync backend (no cloud sync; settings stay local or session-scoped).
+5. Successful live inference verified with a real API key (the live run used a disposable sentinel key, reached the real endpoint, and saw HTTP 401; no real key or successful end-to-end result was used).
+
+For these areas, derive a concrete technical plan from this product brief before major implementation, and do not assume the implementation choices have already been made.
 
 ---
 
 # 30. One-Sentence Definition
 
 > **AsterTab is a restrained but extensible browser Command Workspace that connects search, context, GitHub, OJs, AI, and future tools through a permission-aware Agent instead of rebuilding those tools.**
+
+> 2026-11-04: §29 synced with implemented baseline; no product decisions changed.
