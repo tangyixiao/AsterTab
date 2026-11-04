@@ -1,8 +1,9 @@
 # AsterTab 学习诊断 Agent 工作流设计 Spec
 
-> **状态：Draft（工作流各设计段已在 2026-09-25 讨论确认；书面 Spec 待用户审核）。** 本文定义一个受控、只读的 OJ + GitHub 学习诊断流程。审核本文不代表批准后续 implementation plan 或授权开始实现。
+> **状态：Implemented / 待产品复核（Baseline 定稿）。定稿 2026-11-04，依据已落地实现与验收记录。** 本文定义一个受控、只读的 OJ + GitHub 学习诊断流程。本次定稿只把截至 2026-11-04 已落地的实现与验收记录对齐到 Spec，如实标注已实现范围与仍未实现／未验证的部分；用户尚未逐条审核，故标注「待产品复核」，不代表产品逐条批准，也不新增功能设计或扩大范围。审核本文不代表批准后续 implementation plan 或授权开始实现。
 
-- 日期：2026-09-25
+- 日期：2026-09-25（初稿）
+- 定稿：2026-11-04（依据已落地实现与验收记录；见 §11「实现与验收现状」）
 - 范围：用户主动发起的“结合洛谷题目、近期提交和 GitHub 代码，判断学习卡点”单一工作流
 - 产品依据：[`PROJECT.md`](../../../PROJECT.md)、[`AGENTS.md`](../../../AGENTS.md)
 - 架构边界：[`2026-09-23-astertab-command-architecture-design.md`](2026-09-23-astertab-command-architecture-design.md)
@@ -63,7 +64,7 @@ AI 诊断
 4. **上下文审阅。** 展示将发送的用户请求、题目/提交/代码片段、必要来源标识和目标 Provider。用户可移除任意来源或字段。
 5. **单次外发确认。** 用户点击明确的发送操作后，才将预览中的内容发送到所显示的 Provider。取消、关闭或未确认都不得发送。修改上下文后必须重新确认。
 6. **诊断。** 模型给出有来源依据的阶段判断、证据、尚缺的信息和下一步最小帮助。结果不触发后续读取或外部副作用。
-7. **继续交互。** 用户可以追加来源、回答追问或要求更深一层提示。任何新增上下文都重新审阅、重新确认。
+7. **继续交互（产品方向；后续增量，未纳入本次实现）。** 产品方向上，用户可以追加来源、回答追问或要求更深一层提示；任何新增上下文都重新审阅、重新确认。**当前实现边界：** `DiagnosticDraft` 仅支持单次发送，无多轮对话、无追问历史；编辑上下文会使旧结果失效，需重新审阅并重新确认后再发送。本节描述的是后续增量，未纳入本次已落地实现，详见 §11。
 
 ## 4. 来源、读取和授权
 
@@ -142,18 +143,42 @@ AI 输出是诊断和建议，不具有读取、联网、执行、提交或写�
 9. 首屏在离线、AI 未配置或服务不可用时仍能使用确定性 Command Center。
 10. 生产包除存储 API 所需的 `storage` permission 外，不声明所选主机为 required host permission；`https://openrouter.ai/*` 与已批准来源保持 optional。不得包含 background worker 或 content script。
 
-## 10. 实现前待核验项
+## 10. 待核验项（2026-11-04 核对）
 
-这些事项不阻止本工作流 Spec 成文，但必须在写 implementation plan 前有明确决定/证据：
+以下是本节初稿列出、需在写 implementation plan 前明确决定/证据的事项。现依据已落地实现与验收记录逐项核对，如实标注「已解决／已实现／仍未实现／已验收」及边界，不夸大：
 
-1. **已解决（2026-09-29）：** 用户选择 OpenRouter API key。固定 endpoint、会话内存 key、本机模型 ID、按需 host 权限和服务商数据政策提示见 [ADR-0002](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)。
-2. GitHub App 的仓库选择、MV3 回调、PKCE、令牌保存/刷新/撤销方案是否能在不增加未批准后端的前提下通过安全审核；否则首版关闭私有 API 读取。
-3. Luogu 单题公共页面的读取方式、可用性与维护成本；无法可靠读取时以用户粘贴题面回退。近期提交路径不依赖个人历史 API。
-4. Chrome/Edge 对按需 host 权限、生产权限和扩展 OAuth 回调的真实行为验收。
+1. **OpenRouter key 已解决（决策层面），但真实 key 的成功 live 推理仍未验证。** 用户于 2026-09-29 选择 OpenRouter API key；固定 endpoint、会话内存 key、本机模型 ID、按需 host 权限和服务商数据政策提示见 [ADR-0002](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)。实现与 unit/浏览器回归测试已落地（见 §11）。但截至 2026-11-04，harness 用的是哨兵 key（`sk-or-browser-test-only`），只验证到**真实端点** `https://openrouter.ai/api/v1/chat/completions` 返回 **HTTP 401**；没有真实 key，也没有成功的付费 API 推理。真实 key 的成功 live 推理仍待用户本机填写 key 后显式触发，详见 [验收记录](../../testing/diagnostic-local-context-acceptance.md)「Live host-permission prompt and real-endpoint verification」。
+2. **GitHub 私有仓库访问仍未实现。** 当前仅实现 GitHub **公开**文件读取（固定 `https://api.github.com/*`、仅 40 位提交 SHA 永久链接）与粘贴代码回退；私有仓库读取所需的 GitHub App + PKCE + `state` + 令牌安全存储/刷新/撤销与安全审核均**未实现、未通过审核**。按 §4 与 §9 第 5 项，任一门槛未过前该路径保持关闭，用户仍可粘贴代码。此项保持为后续增量，不得视为本次已落地。
+3. **洛谷单题读取已实现 + 粘贴回退。** `readLuoguProblem` 仅接受固定 `https://www.luogu.com.cn/problem/<id>` 公开题目页（无 credentials/query/fragment，抽取 `lentille-context`），读取/解析失败时回退到用户粘贴题面；近期提交路径不依赖个人提交历史 API，见 [实现 plan](../plans/2026-09-27-astertab-diagnostic-local-context.md) Task 2 与 [验收记录](../../testing/diagnostic-local-context-acceptance.md)。
+4. **Chrome/Edge 按需 host 权限已验收。** 生产 Manifest 仅 `storage` 为 required；Luogu、GitHub API、OpenRouter 三处为 `optional_host_permissions`，无 required host permission、background worker 或 content script。Chrome 与 Edge 生产构建及 10 项浏览器 harness 检查通过；live 模式下真实原生 host-permission 弹窗由人工批准、`chrome.permissions.contains` 返回 true，且权限在 profile 中持久化。详见 [验收记录](../../testing/diagnostic-local-context-acceptance.md)。注意：live 验收用的是哨兵 key，只验证到权限与真实端点 401，不是成功推理。
 
 如以上核验导致用户可见范围、权限或外发行为变化，必须先修订并重新审核本 Spec；不能由执行 Agent 临时选择。
 
-## 11. 参考资料
+## 11. 实现与验收现状（2026-11-04）
+
+本节如实记录截至 2026-11-04 的已落地实现与验收证据，引用下列事实来源（相对路径）：
+
+- 实现 plan：[`2026-09-27-astertab-diagnostic-local-context.md`](../plans/2026-09-27-astertab-diagnostic-local-context.md)（Task 1–4 全部完成）
+- 验收记录：[`diagnostic-local-context-acceptance.md`](../../testing/diagnostic-local-context-acceptance.md)（多轮验收）
+- 决策：[`ADR-0002-openrouter-diagnostic-integration.md`](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)、[`ADR-0001-wxt-preact-extension-stack.md`](../../decisions/ADR-0001-wxt-preact-extension-stack.md)
+
+**已落地范围（与 §1–§9 产品方向一致，不扩大范围）：**
+
+- 实现 plan 的 4 个 Task 全部完成：纯上下文预览、固定公开来源读取（洛谷单题 + GitHub 公开文件）、本地草稿 UI、浏览器与 Manifest 验收。
+- 测试与构建门禁（以最终一轮「OpenRouter response handling and browser regression follow-up」为准，见验收记录）：`npm test` **9 files / 65 tests 通过**；`npm run typecheck` 0 diagnostics；`npm run build` 与 `npm run build:edge` 双构建均 Exit 0。上述为验收记录中的历史观察；本工作区定稿时另跑只读 `npm test` / `npm run typecheck` 复核（不跑 build，避免写共享 `.wxt`）。
+- **生产 Manifest 权限：** Chrome 与 Edge 生产包均仅 required `storage` API permission；**三处** `optional_host_permissions` —— `https://www.luogu.com.cn/*`、`https://api.github.com/*`、`https://openrouter.ai/*`；无 required `host_permissions`、无 background service worker、无 content script（符合 §9 第 10 项；「仅生产必需权限」的工程依据见 ADR-0001 决策第 10 条）。
+- **OpenRouter 集成（ADR-0002）：** 固定 `POST https://openrouter.ai/api/v1/chat/completions`，Bearer key 仅在 `Authorization` header，不进 JSON 正文；预览与发送共用同一序列化正文；**单次发送**，需用户显式勾选确认 + 按钮点击才在该点击处理中申请 optional host 权限并外发；请求/上下文/模型变更会使旧确认与旧结果失效，需重新审阅、重新确认再发。
+- **请求边界：** 上下文上限 50,000 字符、`max_tokens` 1,200、`stream: false`、响应正文上限 1,000,000 bytes；**60 秒超时中止，不自动重试、不切换模型、不切换 Provider**；错误不暴露服务端原始错误正文；响应作为普通文本显示，不解析为动作、不执行 HTML、不给模型配置 tools/function calling。
+- **密钥与设置生命周期：** API key 仅存 `browser.storage.session`（会话内存，不落盘、不同步）；模型 ID 存 `storage.local` 本机偏好；key 不进入请求正文、日志、遥测或上下文；两者分离（符合 §5；凭据处理的项目安全约束见 `AGENTS.md` §26 Security）。Chrome 与 Edge 生产 UI 各 10 项浏览器检查通过；live 模式验证真实原生权限弹窗与真实端点返回 401。
+
+**仍未实现 / 未验证（如实标注，不夸大）：**
+
+- 真实 OpenRouter key 的**成功 live 推理**未验证：harness 用哨兵 key，只验证到真实端点返回 401（见 §10 第 1 项）。
+- GitHub **私有**仓库读取未实现（见 §10 第 2 项）。
+- §3 第 7 步「继续交互」的多轮对话 / 追问历史 / 追加来源后延续同一会话，属**后续增量，未纳入本次实现**（见 §3 第 7 步）。
+- 生产 Chrome/Edge 构建与浏览器验收均为验收记录中的历史观察；本定稿未重跑 `build` / `build:edge`（会写共享 `.wxt`，由 lead 统一跑）。
+
+## 12. 参考资料
 
 - [GitHub REST API：Repository contents](https://docs.github.com/en/rest/repos/contents)
 - [Choosing permissions for a GitHub App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/choosing-permissions-for-a-github-app)
@@ -161,3 +186,10 @@ AI 输出是诊断和建议，不具有读取、联网、执行、提交或写�
 - [Best practices for creating a GitHub App](https://docs.github.com/en/apps/creating-github-apps/about-creating-github-apps/best-practices-for-creating-a-github-app)
 - [GitHub OAuth App scopes](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps)
 - [Luogu Open Platform documentation](https://docs.lgapi.cn/open)（本次核验未确认适用于个人近期提交历史的正式只读接口；本 Spec 不依赖该类接口。）
+
+---
+
+## 修订记录
+
+- 2026-09-25：初稿（Draft），§1–§9 产品方向定稿讨论。
+- 2026-11-04：Baseline 定稿 —— 状态改为「Implemented / 待产品复核」；按已落地实现与验收记录核对 §10 四项；补注 §3 第 7 步「继续交互」的当前单次发送边界（标为后续增量）；新增 §11「实现与验收现状（2026-11-04）」；原 §11「参考资料」顺延为 §12。§1–§9 产品方向、产品决策与范围未改动。
