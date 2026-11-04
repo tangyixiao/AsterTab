@@ -2,6 +2,7 @@ import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import { parseCommand } from "../../core/commands/parse-command";
 import { buildSearchUrl } from "../../core/search/build-search-url";
+import { DiagnosticDraft } from "../diagnostic/DiagnosticDraft";
 import "./command-center.css";
 
 export type CommandCenterProps = {
@@ -11,6 +12,11 @@ export type CommandCenterProps = {
 export function CommandCenter({ onNavigate }: CommandCenterProps): JSX.Element {
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("");
+  const [agentRequest, setAgentRequest] = useState<string | null>(null);
+
+  if (agentRequest !== null) {
+    return <DiagnosticDraft request={agentRequest} onClose={() => { setAgentRequest(null); setInput(""); setStatus(""); }} />;
+  }
 
   return (
     <main>
@@ -22,7 +28,7 @@ export function CommandCenter({ onNavigate }: CommandCenterProps): JSX.Element {
           return;
         }
         if (result.kind === "agent") {
-          setStatus("AI 尚未接入。");
+          setAgentRequest(result.request);
           return;
         }
         if (result.kind === "error") {
