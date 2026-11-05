@@ -224,18 +224,50 @@ try {
     assert.ok(permissions.every(item => JSON.stringify(item) === JSON.stringify({ origins: ["https://openrouter.ai/*"] })));
     checks.push("send body equals preview, key stays in header, result renders as text and confirmation is consumed");
 
+    // Multi-turn: a follow-up resend carries system + full in-memory history +
+    // the new question, and needs its own fresh confirmation after the input.
+    await page.locator("#diagnostic-followup").fill("为什么会卡在实现阶段 <script>alert(2)</script>");
+    await page.waitForFunction(() => document.querySelector("#openrouter-request-preview")?.textContent.includes("为什么会卡在实现阶段"));
+    const followUpPreview = await page.locator("#openrouter-request-preview").textContent();
+    assert.ok(followUpPreview.includes("WA on test 3"));
+    assert.ok(followUpPreview.includes("较像卡在调试"));
+    assert.ok(followUpPreview.includes("为什么会卡在实现阶段"));
+    assert.equal(await consent().isChecked(), false);
+    await confirm();
+    await send().click();
+    await page.waitForFunction(() => (document.querySelector("#diagnostic-followup")?.value ?? "pending") === "");
+    assert.equal(requests.length, 2);
+    assert.equal(requests[1].body, followUpPreview);
+    const followUpBody = JSON.parse(requests[1].body);
+    assert.equal(followUpBody.messages.length, 4);
+    assert.equal(followUpBody.messages[1].role, "user");
+    assert.equal(followUpBody.messages[2].role, "assistant");
+    assert.ok(followUpBody.messages[2].content.includes("较像卡在调试"));
+    assert.equal(followUpBody.messages[3].role, "user");
+    assert.ok(followUpBody.messages[3].content.includes("为什么会卡在实现阶段"));
+    assert.equal(await consent().isChecked(), false);
+    assert.equal(await page.locator(".diagnosis-result").count(), 1);
+    assert.equal(await page.locator(".draft-history-turn").count(), 4);
+    checks.push("a follow-up resends system + full history + the new question with fresh confirmation and renders the round in history");
+
     responseMode = "unauthorized";
+    await page.locator("#diagnostic-followup").fill("再来一次");
+    await page.waitForFunction(() => document.querySelector("#openrouter-request-preview")?.textContent.includes("再来一次"));
     await confirm();
     await send().click();
     await page.getByRole("alert").filter({ hasText: "401" }).waitFor();
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
+    assert.equal(JSON.parse(requests[2].body).messages.length, 6);
     assert.equal(await page.locator(".diagnosis-result").count(), 0);
+    assert.equal(await page.locator(".draft-history-turn").count(), 4);
     assert.ok(!(await page.locator("body").textContent()).includes("private provider detail"));
     assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("WA on test 3"));
     assert.equal(await consent().isChecked(), false);
-    checks.push("401 preserves source input, hides raw error and does not retry");
+    checks.push("401 on a follow-up keeps history in memory, hides raw error and does not retry");
 
     responseMode = "pending";
+    await page.locator("#diagnostic-followup").fill("第三轮追问");
+    await page.waitForFunction(() => document.querySelector("#openrouter-request-preview")?.textContent.includes("第三轮追问"));
     await confirm();
     await send().click();
     await page.waitForFunction(() => [...document.querySelectorAll('[role="status"]')].some(item => item.textContent.includes("60 秒")));
@@ -265,7 +297,7 @@ try {
   await openDraft("offline diagnostic");
   assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("offline diagnostic"));
   assert.equal(await send().isEnabled(), false);
-  assert.equal(requests.length, liveMode ? 2 : 3);
+  assert.equal(requests.length, liveMode ? 2 : 4);
   checks.push("offline reload preserves the command entry and local diagnostic editing without an AI call");
 
   assert.deepEqual(unexpectedRequests, []);

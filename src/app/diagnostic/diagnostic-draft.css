@@ -19,5 +19,7 @@
 #openrouter-request-preview, .diagnosis-result { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; border: 1px solid #bbb; border-radius: 0.4rem; background: #f8f8f8; }
 .diagnostic-draft details { margin: 1rem 0; }
 .diagnostic-draft summary { cursor: pointer; font-weight: 600; }
+.draft-history-turn pre { overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 0.75rem; border: 1px solid #ddd; border-radius: 0.4rem; background: #f8f8f8; }
+.draft-history-turn .draft-help { margin: 0.6rem 0 0.3rem; font-weight: 600; }
 .diagnostic-draft button:disabled { cursor: not-allowed; opacity: 0.65; }
 @media (max-width: 40rem) { .draft-heading, .diagnostic-draft .draft-read-row { flex-direction: column; } }
