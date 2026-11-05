@@ -4,6 +4,7 @@
 - 决策日期：2026-09-29
 - 决策来源：用户选择“OpenRouter API key”
 - 适用范围：显式 `ai <request>` 的一次性学习诊断
+- 2026-11-05 补记：见文末「补记（2026-11-05）」；决策 7 中「对话历史」限制按该补记调整，其余决策不变。
 
 ## 背景
 
@@ -54,3 +55,15 @@ OpenRouter → 用户选择的模型服务商
 - [OpenRouter Privacy Policy](https://openrouter.ai/privacy/)：输入会转交所选/自动路由的模型服务商，数据做法因服务商而异。
 - [Chrome Storage API](https://developer.chrome.com/docs/extensions/reference/api/storage)：session storage 仅驻留内存，不落盘，并在浏览器重启或扩展重载/更新时清空。
 - [Chrome Permissions API](https://developer.chrome.com/docs/extensions/reference/api/permissions)：在可选主机权限功能被使用时按需请求权限。
+
+## 补记（2026-11-05）
+
+背景：2026-11-05 通过的设计 spec `docs/superpowers/specs/2026-11-05-astertab-v1-increments-design.md` 引入「无状态多轮诊断」。本补记只调整决策 7 中「无对话历史」这一条；其余 8 条决策（固定端点、按需权限、session key、本机模型 ID、预览与发送共用序列化正文、每次发送显式同意、受限能力的其余部分、请求/响应上限、集成边界）逐字不变、继续有效。
+
+新约束：
+
+- 对话历史只保存在诊断草稿组件内存中，不写入 `storage.local` / `storage.session` / `storage.sync`、磁盘或日志；关闭诊断草稿即清空历史与结果。
+- 每轮全量重发 `system + 全部历史 + 本轮追问`；每轮都需重新审阅完整请求 JSON 预览（含全部历史消息）并重新勾选确认，确认与当前预览绑定。
+- 50,000 字符上限对整段对话正文（含 system prompt）生效，超限明示错误且不静默截断、不发送。
+- 仍然没有自动重试、模型回退、tools/function calling、后台调用或第二个 Provider registry；响应仍作为普通文本显示，不解析为动作、不执行 HTML。
+- 私有 GitHub PAT 是独立增量，不改变本 ADR 的 OpenRouter 集成边界。
