@@ -4,6 +4,7 @@ import { browser } from "wxt/browser";
 import { buildContextPreview, type DiagnosticSource } from "../../core/diagnostic/context-preview";
 import { isCurrentConfirmedRequest } from "../../core/diagnostic/confirmed-request";
 import { createGitHubCodeDraft, getSelectedGitHubCodeSources, removeGitHubCodeDraft, updateGitHubCodeDraft, type GitHubCodeDraft } from "../../core/diagnostic/github-code-drafts";
+import { createGitHubPrivateAccess } from "../../core/diagnostic/private-access";
 import { buildOpenRouterRequestBody, OPENROUTER_HOST_PERMISSION, OPENROUTER_MAX_CONTEXT_CHARACTERS, sendOpenRouterRequest, serializeOpenRouterRequestBody, type OpenRouterRequestBody } from "../../integrations/ai/openrouter";
 import { createOpenRouterSettings } from "../../integrations/ai/openrouter-settings";
 import { parseGitHubFileUrl, parseLuoguProblemUrl, readGitHubFile, readLuoguProblem } from "../../core/diagnostic/public-sources";
@@ -33,6 +34,12 @@ const openRouterSettings = createOpenRouterSettings(
   },
 );
 
+const githubPrivateAccess = createGitHubPrivateAccess({
+  get: async key => (await browser.storage.session.get(key))[key],
+  set: async (key, value) => browser.storage.session.set({ [key]: value }),
+  remove: async key => browser.storage.session.remove(key),
+});
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "读取失败，请粘贴内容。";
 }
@@ -43,6 +50,10 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   const [settingsReady, setSettingsReady] = useState(false);
   const [hasSessionKey, setHasSessionKey] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [hasPat, setHasPat] = useState(false);
+  const [patInput, setPatInput] = useState("");
+  const [patMessage, setPatMessage] = useState("");
+  const [patError, setPatError] = useState("");
   const [settingsMessage, setSettingsMessage] = useState("");
   const [settingsError, setSettingsError] = useState("");
   const [settingsBusy, setSettingsBusy] = useState(false);
@@ -123,10 +134,11 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
   useEffect(() => {
     let active = true;
-    void openRouterSettings.load().then(settings => {
+    void Promise.all([openRouterSettings.load(), githubPrivateAccess.read()]).then(([settings, pat]) => {
       if (!active) return;
       setModelId(settings.modelId);
       setHasSessionKey(settings.hasApiKey);
+      setHasPat(Boolean(pat));
       setSettingsReady(true);
     }).catch(error => {
       if (!active) return;
@@ -187,7 +199,8 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
     try {
       if (!await browser.permissions.request({ origins: [GITHUB_API_ORIGIN] })) throw new Error("未获得 GitHub 读取权限，可直接粘贴代码。");
       if (version !== codeReadVersions.current.get(id)) return;
-      const source = await readGitHubFile(url, fetch);
+      const pat = await githubPrivateAccess.read();
+      const source = await readGitHubFile(url, fetch, pat || undefined);
       if (version !== codeReadVersions.current.get(id)) return;
       updateCodeDraft(id, { label: source.label, text: source.text, sourceUrl: source.url, included: true });
     } catch (error) {
@@ -270,6 +283,37 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
       setSettingsMessage("当前会话中的 API key 已清除。");
     } catch (error) {
       setSettingsError(errorMessage(error));
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
+
+  async function savePat(): Promise<void> {
+    setSettingsBusy(true);
+    setPatMessage("");
+    setPatError("");
+    try {
+      await githubPrivateAccess.save(patInput);
+      setPatInput("");
+      setHasPat(true);
+      setPatMessage("GitHub PAT 仅保存在当前浏览器会话内存中，浏览器关闭后清除。");
+    } catch (error) {
+      setPatError(errorMessage(error));
+    } finally {
+      setSettingsBusy(false);
+    }
+  }
+
+  async function removePat(): Promise<void> {
+    setSettingsBusy(true);
+    setPatMessage("");
+    setPatError("");
+    try {
+      await githubPrivateAccess.remove();
+      setHasPat(false);
+      setPatMessage("当前会话中的 GitHub PAT 已清除。");
+    } catch (error) {
+      setPatError(errorMessage(error));
     } finally {
       setSettingsBusy(false);
     }
@@ -402,11 +446,20 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
       <fieldset>
         <legend>GitHub 代码</legend>
-        <p class="draft-help">只读取你指定的公开文件。自动读取仅支持包含 40 位提交 SHA 的文件永久链接；其他情况请粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
+        <p class="draft-help">只读取你指定的文件；保存 PAT 后也可读取你有权限的私有文件。自动读取仅支持包含 40 位提交 SHA 的文件永久链接；其他情况请粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
+        <label for="github-pat">GitHub 细粒度 PAT（可选）</label>
+        <div class="draft-read-row">
+          <input id="github-pat" type="password" value={patInput} maxLength={500} disabled={!settingsReady || settingsBusy} autoComplete="off" spellcheck={false} placeholder={hasPat ? "当前会话已保存；输入新 PAT 可替换" : "github_pat_…"} onInput={event => { setPatInput(event.currentTarget.value); setPatMessage(""); setPatError(""); }} />
+          <button type="button" disabled={!settingsReady || settingsBusy || !patInput.trim()} onClick={() => { void savePat(); }}>保存到当前会话</button>
+        </div>
+        <p class="draft-help">PAT 仅保存在当前浏览器会话内存中，只作为 Authorization 头发给 api.github.com，用于读取你在 GitHub 上指定的仓库文件；不进入预览、不发给其他服务，可随时在 GitHub 设置中撤销。</p>
+        {hasPat && <button type="button" disabled={settingsBusy} onClick={() => { void removePat(); }}>清除当前会话 PAT</button>}
+        {patMessage && <p role="status">{patMessage}</p>}
+        {patError && <p role="alert">{patError}</p>}
         {codeDrafts.map((draft, index) => (
           <fieldset class="draft-code-source" key={draft.id}>
             <legend>GitHub 文件 {index + 1}</legend>
-            <label for={`code-url-${draft.id}`}>公开文件 URL</label>
+            <label for={`code-url-${draft.id}`}>文件 URL</label>
             <div class="draft-read-row">
               <input id={`code-url-${draft.id}`} type="url" value={draft.inputUrl} placeholder="https://github.com/owner/repo/blob/提交SHA/file.cpp" onInput={event => {
                 invalidateCodeRead(draft.id);

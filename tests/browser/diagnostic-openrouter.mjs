@@ -93,6 +93,8 @@ try {
   const button = name => page.getByRole("button", { name, exact: true });
   const consent = () => page.getByRole("checkbox", { name: /我已审阅/ });
   const send = () => button("确认并发送诊断");
+  const openrouterSection = () => page.locator("fieldset:has(#openrouter-api-key)");
+  const githubSection = () => page.locator("fieldset:has(#github-pat)");
   async function openDraft(request = "判断 WA 卡在哪") {
     await page.locator("#command-input").fill(`ai ${request}`);
     await button("搜索").click();
@@ -109,7 +111,7 @@ try {
   await button("保存模型").click();
   await page.getByRole("status").filter({ hasText: "模型 ID 已保存" }).waitFor();
   await page.locator("#openrouter-api-key").fill(fakeKey);
-  await button("保存到当前会话").click();
+  await openrouterSection().getByRole("button", { name: "保存到当前会话" }).click();
   await page.getByRole("status").filter({ hasText: "API key 仅保存" }).waitFor();
   assert.equal(await page.locator("#openrouter-api-key").inputValue(), "");
   const stored = await page.evaluate(async () => ({ local: await chrome.storage.local.get(null), session: await chrome.storage.session.get(null) }));
@@ -118,6 +120,14 @@ try {
   assert.equal(requests.length, 0);
   if (!liveMode) assert.equal(await page.evaluate(() => window.permissionCalls.length), 0);
   checks.push("saving uses real local/session storage and makes no request or permission call");
+
+  await page.locator("#github-pat").fill("github_pat_ui_test_token");
+  await githubSection().getByRole("button", { name: "保存到当前会话" }).click();
+  await page.getByRole("status").filter({ hasText: "PAT 仅保存" }).waitFor();
+  assert.equal(await page.locator("#github-pat").inputValue(), "");
+  assert.deepEqual(await page.evaluate(() => chrome.storage.session.get("githubPrivatePat")), { githubPrivatePat: "github_pat_ui_test_token" });
+  assert.ok(!(await page.locator("body").textContent()).includes("github_pat_ui_test_token"));
+  checks.push("a GitHub PAT is stored session-only and never reaches the page, preview, or any request body");
 
   await page.locator("#submission-text-1").fill("WA on test 3; <script>alert(1)</script>");
   await button("添加提交记录").click();
@@ -243,6 +253,8 @@ try {
   assert.equal(await consent().isChecked(), false);
   await button("清除当前会话 API key").click();
   await page.getByRole("status").filter({ hasText: "API key 已清除" }).waitFor();
+  await githubSection().getByRole("button", { name: "清除当前会话 PAT" }).click();
+  await page.getByRole("status").filter({ hasText: "PAT 已清除" }).waitFor();
   assert.deepEqual(await page.evaluate(() => chrome.storage.session.get(null)), {});
   checks.push("closing during a request clears raw context; reopening retains only settings and key removal works");
 
