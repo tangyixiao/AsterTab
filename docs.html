@@ -1,39 +1,19 @@
-<!doctype html>
-<html lang="zh-CN" data-project="AsterTab" data-docs="true"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AsterTab · 使用文档</title><link rel="stylesheet" href="assets/system.css"><link rel="stylesheet" href="assets/ui/cards.css"><link rel="stylesheet" href="assets/motion/motion.css"><link rel="stylesheet" href="assets/layout/layout.css"><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="assets/page.css"><!-- <html lang="en" data-radius="sharp">; keep this <style> after the links: layout.css resets --ly-scale -->
-<style>
-:root {
-  --p-bg: #fafafa; --p-surface: #f0f1f3; --p-ink: #171717; --p-muted: #595959;
-  --p-accent: #1748ca; --p-accent-ink: #fafafa; --p-action: #1748ca; --p-action-ink: #fafafa;
-  --p-inv-bg: #171717; --p-inv-surface: #242424; --p-inv-ink: #fafafa; --p-inv-muted: #9b9b9b;
-  --p-inv-accent: #fafafa; --p-inv-accent-ink: #171717; --p-inv-action: #fafafa; --p-inv-action-ink: #171717;
-  --font-display: "Geist", system-ui, sans-serif;
-  --font-text: "Geist", system-ui, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-  --display-weight: 500;
-  --display-tracking: -0.035em;
-  --display-tracking-xl: -0.045em;
-}
-</style><style>html[data-theme="light"]{--p-bg:#fafafa;--p-surface:#f0f1f3;--p-ink:#171717;--p-muted:#595959;--p-accent:#1748ca;--p-accent-ink:#ffffff;--p-action:#1748ca;--p-action-ink:#ffffff;color-scheme:light}html[data-theme="dark"]{--p-bg:#131517;--p-surface:#202427;--p-ink:#f0f1f2;--p-muted:#b5bbc1;--p-accent:#a4c2ff;--p-accent-ink:#131517;--p-action:#a4c2ff;--p-action-ink:#131517;color-scheme:dark}</style><script src="assets/theme.js"></script><link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="assets/docs.css"></head><body class="docs-page">
-<header class="nav"><div class="wrap nav__bar"><a class="skip-link" href="#docs-content">跳到正文</a><a class="nav__logo" href="index.html#top">AsterTab</a><nav class="nav__links" aria-label="章节导航"><div class="nav__item"><a class="nav__link" href="index.html#work">项目内容</a></div><div class="nav__item"><a class="nav__link" href="docs.html">使用文档</a></div></nav><div class="nav__actions"><a class="btn btn--primary" href="https://github.com/tangyixiao/AsterTab">查看源码</a><button class="theme-toggle" type="button" data-theme-toggle aria-label="切换深浅色" aria-pressed="false"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button></div><button class="nav__toggle" type="button" aria-expanded="false" aria-label="菜单"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div></header>
-<main class="docs-shell wrap" id="top">
-<aside class="docs-sidebar" aria-label="文档导航">
-<a class="docs-home" href="index.html">← 返回项目首页</a>
-<details class="docs-toc" open><summary>README 目录</summary><nav aria-label="README 目录"><ol><li class="docs-level-1"><a href="#astertab">AsterTab</a></li><li class="docs-level-2"><a href="#当前状态v1">当前状态（V1）</a></li><li class="docs-level-2"><a href="#命令语法">命令语法</a></li><li class="docs-level-2"><a href="#开发">开发</a></li><li class="docs-level-2"><a href="#本地加载扩展">本地加载扩展</a></li><li class="docs-level-2"><a href="#权限与隐私">权限与隐私</a></li><li class="docs-level-2"><a href="#文档索引">文档索引</a></li><li class="docs-level-2"><a href="#许可证">许可证</a></li></ol></nav></details>
-<div class="docs-resources"><p>源仓库资料</p><ul><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/README.md">原始 README</a></li><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/LICENSE">LICENSE</a></li><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/NOTICE">NOTICE</a></li><li><a href="https://github.com/tangyixiao/AsterTab/tree/29145474abe0705b47ad360051207f85b1c33a28/docs">docs/</a></li></ul></div>
-</aside>
-<div class="docs-main"><header class="docs-heading"><p class="docs-eyebrow">项目文档 · tangyixiao/AsterTab</p>
-<h1>AsterTab 使用文档</h1><p>以下正文来自源仓库 README。图片以原图链接保留。</p>
-<div class="docs-source"><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/README.md">在 GitHub 阅读原文</a><span>来源版本：<code>29145474abe0</code></span></div></header>
-<article class="docs-markdown" id="docs-content" tabindex="-1"><h1 id="astertab">AsterTab</h1>
+<!doctype html><html lang="zh-CN" data-docs="v3" data-project="AsterTab"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AsterTab · 文档</title><link rel="stylesheet" href="assets/fonts/fonts.css"><link rel="stylesheet" href="assets/fonts/display.css"><link rel="stylesheet" href="assets/site.css"><link rel="stylesheet" href="assets/docs-v3.css"><link rel="stylesheet" href="assets/three/view3d.css"><link rel="stylesheet" href="assets/flagships.css"><link rel="stylesheet" href="assets/polish.css"><style>:root{--font-body:"Geist","PingFang SC","Microsoft YaHei",sans-serif;--font-text:var(--font-body);--model-accent:var(--accent);--font-display:"Fraunces","Songti SC","SimSun",serif;--font-mono:"Geist Mono","SFMono-Regular",Consolas,monospace}html[data-theme="light"]{--bg:#DFEDE3;--surface:#F5F0DD;--ink:#18382D;--muted:#52695b;--accent:#226648;--accent-ink:#FFFFFF;--line:color-mix(in srgb,#18382D 19%,transparent);color-scheme:light}html[data-theme="dark"]{--bg:#101F1A;--surface:#1A3026;--ink:#F0F3DE;--muted:#a3b7a7;--accent:#a3d9a7;--accent-ink:#000000;--line:color-mix(in srgb,#F0F3DE 19%,transparent);color-scheme:dark}</style><script src="assets/theme.js"></script><link rel="stylesheet" href="assets/docs-v3.css"></head>
+<body class="docs-page"><header class="nav site-nav"><div class="wrap nav-inner"><a class="skip-link" href="#docs-content">跳到正文</a><a class="site-brand" href="index.html">AsterTab</a><nav class="site-links" aria-label="项目导航"><a href="docs.html">使用文档</a><a href="https://github.com/tangyixiao/AsterTab">源代码</a></nav><div class="nav-controls"><a class="btn nav-cta" href="https://github.com/tangyixiao/AsterTab">查看源码</a><button class="site-theme" type="button" data-theme-toggle aria-label="切换深浅色" aria-pressed="false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg></button><button class="site-menu-toggle" data-menu-toggle type="button" aria-label="菜单" aria-expanded="false" aria-controls="site-drawer"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 6h14M3 14h14"/></svg></button></div></div><nav class="site-drawer" id="site-drawer" hidden><a href="index.html">项目首页</a><a href="docs.html">使用文档</a><a href="https://github.com/tangyixiao/AsterTab">查看源码</a><p class="drawer-note">AsterTab</p></nav></header><div class="docs-shell" id="top">
+<aside class="docs-sidebar"><a class="docs-back" href="index.html">← 项目首页</a>
+<details class="docs-toc" open><summary>本文目录</summary><nav aria-label="文档目录"><ol><li class="docs-level-1"><a href="#astertab">AsterTab</a></li><li class="docs-level-2"><a href="#当前状态v1">当前状态（V1）</a></li><li class="docs-level-2"><a href="#命令语法">命令语法</a></li><li class="docs-level-2"><a href="#开发">开发</a></li><li class="docs-level-2"><a href="#本地加载扩展">本地加载扩展</a></li><li class="docs-level-2"><a href="#权限与隐私">权限与隐私</a></li><li class="docs-level-2"><a href="#文档索引">文档索引</a></li><li class="docs-level-2"><a href="#许可证">许可证</a></li></ol></nav></details>
+<div class="docs-resources"><h2>源仓库资料</h2><ul><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/README.md">原始 README</a></li><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/LICENSE">LICENSE</a></li><li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/NOTICE">NOTICE</a></li><li><a href="https://github.com/tangyixiao/AsterTab/tree/29145474abe0705b47ad360051207f85b1c33a28/docs">docs/</a></li></ul></div></aside>
+<main class="docs-main"><header class="docs-intro"><p class="docs-eyebrow">DOCUMENTATION</p>
+<h1>AsterTab</h1><p>源仓库 README</p><div class="docs-source"><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/README.md">GitHub 原文 ↗</a><code>29145474abe0</code></div></header>
+<article class="docs-markdown" id="docs-content" tabindex="-1"><h1 id="astertab">AsterTab<a class="docs-heading-anchor" href="#astertab" aria-label="此标题的固定链接">#</a></h1>
 <blockquote>
 <p><strong>Don't replace your tools. Connect them.</strong></p>
 </blockquote>
 <p>AsterTab 是一个以命令为中心的浏览器新标签页工作区（Chrome / Edge Manifest V3 扩展），面向学生、OIer、开发者与重度 AI 用户。它用一个低摩擦入口把搜索、GitHub、OJ、AI 等<strong>已有工具连接起来</strong>，而不是重做它们。</p>
 <p>核心是 <strong>Command Center</strong>：先做确定性的解析与跳转，AI 只在确实需要语义理解时介入。AsterTab <strong>不是 super-app</strong>——不做「AI everywhere」、插件市场，也不自建笔记 / Todo / Git 客户端 / 日历 / IDE / OJ / AI 平台。产品原则、边界与优先级见 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/PROJECT.md">PROJECT.md</a> 和 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/AGENTS.md">AGENTS.md</a>。</p>
-<h2 id="当前状态v1">当前状态（V1）</h2>
+<h2 id="当前状态v1">当前状态（V1）<a class="docs-heading-anchor" href="#当前状态v1" aria-label="此标题的固定链接">#</a></h2>
 <ul>
 <li><strong>确定性 Command Center 第一切片</strong>：普通文本与 <code>g</code> / <code>gh</code> / <code>lg</code> 命令经纯 TypeScript 解析、构造固定 HTTPS URL 后直接跳转，不经过 LLM。首屏只加载打包的 HTML / JS / CSS，无外部请求，离线可用。</li>
 <li><strong>学习诊断工作流</strong>：显式 <code>ai &lt;request&gt;</code> 打开一个本地、逐项可勾选的诊断草稿，汇集洛谷题面、手动粘贴的提交记录、GitHub 公开文件（限 40-hex commit SHA 的 URL），拼出精确预览后由 OpenRouter 做<strong>单次</strong>诊断。读取 / 发送前会按需申请对应 host 权限。</li>
@@ -41,9 +21,9 @@
 <li><strong>默认不给完整题解</strong>：先判断卡在题意理解、建模、算法、复杂度、实现、调试还是提交反馈的哪一步，再按需给出反问、最小提示或方向；完整题解仅在用户明确要求时出现。</li>
 <li>当前实现不预建多 Provider runtime、不含 background service worker / content script，也不做自动重试或模型切换。</li>
 </ul>
-<h2 id="命令语法">命令语法</h2>
+<h2 id="命令语法">命令语法<a class="docs-heading-anchor" href="#命令语法" aria-label="此标题的固定链接">#</a></h2>
 <p>在输入框中提交；命令为首个 token（大小写不敏感），空参数只给本地提示、不跳转。目标 URL 来自 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/src/core/commands/parse-command.ts">src/core/commands/parse-command.ts</a> 与 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/src/core/search/build-search-url.ts">src/core/search/build-search-url.ts</a>。</p>
-<table>
+<div class="docs-table-wrap" role="region" aria-label="表格，可横向滚动" tabindex="0"><table>
 <thead>
 <tr>
 <th>输入</th>
@@ -78,31 +58,30 @@
 <td>无（本地草稿与预览）</td>
 </tr>
 </tbody>
-</table>
+</table></div>
 <p><code>ai</code> 草稿中的资料读取、勾选与请求体预览都在本地完成；只有用户确认发送时才向 OpenRouter 发起一次请求。</p>
-<h2 id="开发">开发</h2>
+<h2 id="开发">开发<a class="docs-heading-anchor" href="#开发" aria-label="此标题的固定链接">#</a></h2>
 <p>验收记录使用的环境为 Node <code>v26.9.0</code> / npm <code>11.19.0</code>（见 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/docs/testing/command-center-first-slice-acceptance.md">command-center-first-slice-acceptance.md</a>）；以下命令在该环境验证通过，<strong>不将其写成硬性版本门槛</strong>。技术栈：WXT 0.21.4、TypeScript 6.0.3、Preact 10.29.8、Vitest 5.0.1、Vite 8.3.0。</p>
-<pre><code class="language-bash">npm ci                 # 安装依赖（postinstall 执行 wxt prepare）
-npm test               # vitest run
-npm run typecheck      # tsc --noEmit
-npm run build          # 产出 .output/chrome-mv3
-npm run build:edge     # 产出 .output/edge-mv3
-</code></pre>
-<h2 id="本地加载扩展">本地加载扩展</h2>
+<div class="docs-code" data-code-block><div class="docs-code-toolbar"><span class="docs-code-language">Bash</span><button class="docs-code-copy" type="button" data-copy-code aria-label="复制代码">复制</button><span class="docs-copy-status" role="status" aria-live="polite"></span></div><pre tabindex="0"><code class="highlight language-bash" data-language="bash">npm<span class="tok-w"> </span>ci<span class="tok-w">                 </span><span class="tok-c1"># 安装依赖（postinstall 执行 wxt prepare）</span>
+npm<span class="tok-w"> </span><span class="tok-nb">test</span><span class="tok-w">               </span><span class="tok-c1"># vitest run</span>
+npm<span class="tok-w"> </span>run<span class="tok-w"> </span>typecheck<span class="tok-w">      </span><span class="tok-c1"># tsc --noEmit</span>
+npm<span class="tok-w"> </span>run<span class="tok-w"> </span>build<span class="tok-w">          </span><span class="tok-c1"># 产出 .output/chrome-mv3</span>
+npm<span class="tok-w"> </span>run<span class="tok-w"> </span>build:edge<span class="tok-w">     </span><span class="tok-c1"># 产出 .output/edge-mv3</span>
+</code></pre></div><h2 id="本地加载扩展">本地加载扩展<a class="docs-heading-anchor" href="#本地加载扩展" aria-label="此标题的固定链接">#</a></h2>
 <p><code>npm run build</code> / <code>npm run build:edge</code> 之后：</p>
 <ul>
 <li>Chrome：打开 <code>chrome://extensions</code>，启用开发者模式，用 <strong>Load unpacked</strong> 选择 <code>.output/chrome-mv3</code>。</li>
 <li>Edge：打开 <code>edge://extensions</code>，用 <strong>Load unpacked</strong> 选择 <code>.output/edge-mv3</code>。</li>
 </ul>
 <p>加载后新标签页即被 <code>newtab.html</code> 接管。生产 manifest 为 MV3，版本 <code>1.0.0</code>，仅通过 <code>chrome_url_overrides.newtab</code> 覆盖新标签页。</p>
-<h2 id="权限与隐私">权限与隐私</h2>
+<h2 id="权限与隐私">权限与隐私<a class="docs-heading-anchor" href="#权限与隐私" aria-label="此标题的固定链接">#</a></h2>
 <ul>
 <li>Manifest 的必需权限<strong>仅 <code>storage</code></strong>；Luogu（<code>https://www.luogu.com.cn/*</code>）、GitHub API（<code>https://api.github.com/*</code>）、OpenRouter（<code>https://openrouter.ai/*</code>）都是 <code>optional_host_permissions</code>，只在用户点击「读取」或「发送」时按需请求，可撤销（见 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/wxt.config.ts">wxt.config.ts</a>）。</li>
 <li>OpenRouter API key <strong>只存 <code>browser.storage.session</code></strong>（会话级，不落持久化存储）；模型 ID 存本地 storage；仓库与构建产物不含任何真实 key。</li>
 <li><strong>每次外发需显式勾选确认</strong>：发送前展示精确的序列化 JSON 请求体、所选资料、固定 endpoint，以及 OpenRouter 会转发给所选模型提供商的提示；改动请求、所选资料或模型会使确认失效，需重新勾选并点击发送。</li>
 <li>请求有上下文 / 响应大小上限与 60 秒超时；不自动重试、不自动换模型；错误不暴露原始响应体。首屏、草稿打开与关闭均不保存隐私上下文、不发网络请求。</li>
 </ul>
-<h2 id="文档索引">文档索引</h2>
+<h2 id="文档索引">文档索引<a class="docs-heading-anchor" href="#文档索引" aria-label="此标题的固定链接">#</a></h2>
 <p>产品与协作约定：</p>
 <ul>
 <li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/PROJECT.md">PROJECT.md</a> — 产品 brief、V1 策略、反 super-app 约束</li>
@@ -125,8 +104,7 @@ npm run build:edge     # 产出 .output/edge-mv3
 <li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/docs/testing/command-center-first-slice-acceptance.md">Command Center first slice — production acceptance</a></li>
 <li><a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/docs/testing/diagnostic-local-context-acceptance.md">Learning diagnostic source selection and preview — acceptance</a></li>
 </ul>
-<h2 id="许可证">许可证</h2>
+<h2 id="许可证">许可证<a class="docs-heading-anchor" href="#许可证" aria-label="此标题的固定链接">#</a></h2>
 <p>Apache-2.0，见 <a href="https://github.com/tangyixiao/AsterTab/blob/29145474abe0705b47ad360051207f85b1c33a28/LICENSE">LICENSE</a>。</p>
 </article>
-</div></main><footer class="docs-footer wrap"><a href="index.html">返回首页</a><a href="https://github.com/tangyixiao/AsterTab">GitHub 源仓库</a></footer>
-<script type="module" src="assets/system.js"></script></body></html>
+</main></div><footer class="docs-footer"><a href="index.html">返回首页</a><a href="https://github.com/tangyixiao/AsterTab">GitHub 源仓库</a></footer><script src="assets/docs-v3.js" defer></script><script src="assets/site.js" defer></script></body></html>

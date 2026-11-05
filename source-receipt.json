@@ -2,10 +2,33 @@
   "repo": "tangyixiao/AsterTab",
   "sourceBranch": "main",
   "sourceCommit": "29145474abe0705b47ad360051207f85b1c33a28",
+  "designVersion": 3,
+  "direction": {
+    "visualConcept": "湖绿与奶油色的命令空间：首屏由一条横跨版心的命令输入带定锚，左下为真实命令语法，右上为悬浮的键盘与浏览器标签切片，后续以搜索→上下文→确认的流程折页展开。背景、分区和字重一起构成绿色身份，不沿用左标题右截图再接三功能卡。事实边界：这是浏览器新标签页扩展，连接既有工具；学习诊断是用户确认后的一次调用。",
+    "layout": "command",
+    "palette": {
+      "light": {
+        "bg": "#DFEDE3",
+        "surface": "#F5F0DD",
+        "ink": "#18382D",
+        "muted": "#52695b",
+        "accent": "#226648"
+      },
+      "dark": {
+        "bg": "#101F1A",
+        "surface": "#1A3026",
+        "ink": "#F0F3DE",
+        "muted": "#a3b7a7",
+        "accent": "#a3d9a7"
+      }
+    },
+    "threeConcept": "Three.js 制作浅奶油键帽、湖绿底盘与三片真实命令文字平面；一颗 Enter 键连接到浏览器标签槽，点击才进行短促的机械按压，镜头保持可读的三分之二俯视。该物件标明命令结构示意，不伪装为实体硬件产品。",
+    "distinctiveInteraction": "本地命令预览器切换 g / gh / lg，立即解释将打开的真实目标 URL；只有用户按确认才打开外链。ai 项只解释确认边界并链接文档，不假装在介绍页运行诊断。"
+  },
   "media": [],
   "skills": [
     "baoyu-design",
     "design-taste-frontend"
   ],
-  "design": "content-first source/product/photography; no rejected template or faux 3D"
+  "flagshipModel": "WorkBuddy / deepseek-v4.1-flash"
 }
