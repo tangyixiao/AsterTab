@@ -5,7 +5,7 @@ import { buildContextPreview, type DiagnosticSource } from "../../core/diagnosti
 import { isCurrentConfirmedRequest } from "../../core/diagnostic/confirmed-request";
 import { createGitHubCodeDraft, getSelectedGitHubCodeSources, removeGitHubCodeDraft, updateGitHubCodeDraft, type GitHubCodeDraft } from "../../core/diagnostic/github-code-drafts";
 import { createGitHubPrivateAccess } from "../../core/diagnostic/private-access";
-import { buildOpenRouterRequestBody, OPENROUTER_HOST_PERMISSION, OPENROUTER_MAX_CONTEXT_CHARACTERS, sendOpenRouterRequest, serializeOpenRouterRequestBody, type OpenRouterRequestBody } from "../../integrations/ai/openrouter";
+import { buildOpenRouterConversationRequestBody, buildOpenRouterRequestBody, DIAGNOSTIC_SYSTEM_PROMPT, OPENROUTER_HOST_PERMISSION, OPENROUTER_MAX_CONTEXT_CHARACTERS, sendOpenRouterRequest, serializeOpenRouterRequestBody, type ConversationMessage, type OpenRouterRequestBody } from "../../integrations/ai/openrouter";
 import { createOpenRouterSettings } from "../../integrations/ai/openrouter-settings";
 import { parseGitHubFileUrl, parseLuoguProblemUrl, readGitHubFile, readLuoguProblem } from "../../core/diagnostic/public-sources";
 import { createSubmissionDraft, getSelectedSubmissionSources, removeSubmissionDraft, updateSubmissionDraft, type SubmissionDraft } from "../../core/diagnostic/submission-drafts";
@@ -62,6 +62,8 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   const [sendError, setSendError] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [diagnosisPayload, setDiagnosisPayload] = useState("");
+  const [turns, setTurns] = useState<ConversationMessage[]>([]);
+  const [followUp, setFollowUp] = useState("");
   const [problemInputUrl, setProblemInputUrl] = useState("");
   const [problemLabel, setProblemLabel] = useState("洛谷题目");
   const [problemText, setProblemText] = useState("");
@@ -119,15 +121,25 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   selectedSources.push(...getSelectedSubmissionSources(submissionDrafts));
   selectedSources.push(...getSelectedGitHubCodeSources(codeDrafts));
   const preview = buildContextPreview(requestText, selectedSources);
+  const conversationMode = turns.length > 0;
   const outbound = useMemo(() => {
     if (!modelId.trim()) return { body: undefined, serialized: "", error: "请先设置 OpenRouter 模型 ID。" };
+    if (conversationMode) {
+      if (!followUp.trim()) return { body: undefined, serialized: "", error: "请输入本轮追问；生成新请求前可再次审阅下方历史。" };
+      try {
+        const body = buildOpenRouterConversationRequestBody(modelId, [...turns, { role: "user", content: followUp.trim() }]);
+        return { body, serialized: serializeOpenRouterRequestBody(body), error: "" };
+      } catch (error) {
+        return { body: undefined, serialized: "", error: errorMessage(error) };
+      }
+    }
     try {
       const body = buildOpenRouterRequestBody(modelId, preview);
       return { body, serialized: serializeOpenRouterRequestBody(body), error: "" };
     } catch (error) {
       return { body: undefined, serialized: "", error: errorMessage(error) };
     }
-  }, [modelId, preview]);
+  }, [modelId, preview, conversationMode, turns, followUp]);
   latestPayload.current = outbound.serialized;
   latestConfirmation.current = confirmedPayload;
   const readingSources = problemLoading || codeDrafts.some(draft => draft.loading);
@@ -150,10 +162,11 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
   useEffect(() => {
     invalidateConfirmation();
-    setSendError("");
-    setDiagnosis("");
-    setDiagnosisPayload("");
-  }, [outbound.serialized]);
+    if (turns.length === 0) {
+      setDiagnosis("");
+      setDiagnosisPayload("");
+    }
+  }, [outbound.serialized, turns.length]);
 
   async function readProblem(): Promise<void> {
     let url: string;
@@ -361,6 +374,13 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
       activeSend.current = controller;
       const result = await sendOpenRouterRequest(apiKey, bodyAtClick, fetch, controller.signal);
       if (!draftActive.current) return;
+      const sentUserContent = bodyAtClick.messages[bodyAtClick.messages.length - 1]!.content;
+      if (bodyAtClick.messages.length === 2) {
+        setTurns([{ role: "user", content: sentUserContent }, { role: "assistant", content: result }]);
+      } else {
+        setTurns(previous => [...previous, { role: "user", content: sentUserContent }, { role: "assistant", content: result }]);
+      }
+      setFollowUp("");
       setDiagnosis(result);
       setDiagnosisPayload(payloadAtClick);
     } catch (error) {
@@ -390,6 +410,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
       <label for="diagnostic-request">诊断请求</label>
       <textarea id="diagnostic-request" value={requestText} maxLength={10000} rows={3} onInput={event => { invalidateConfirmation(); setRequestText(event.currentTarget.value); }} />
+      {conversationMode && <p class="draft-help" role="status">对话已开始：资料和之前的请求已在第一轮固定进对话历史，此处的编辑不会改变后续请求；如需更换资料，请关闭草稿后重新开始。</p>}
 
       <fieldset>
         <legend>洛谷题目</legend>
@@ -520,12 +541,14 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
         <p>API key 会通过 HTTPS Authorization header 发送，不包含在下方 JSON 正文中。正文会逐字使用当前预览和模型设置。</p>
         <p class="draft-help">确认后，所选资料会发送至 OpenRouter，并转交所选模型服务商处理。OpenRouter 说明不同模型服务商的数据保留和训练做法可能不同；发送前请查看 <a href={OPENROUTER_PRIVACY_URL} target="_blank" rel="noreferrer">OpenRouter 隐私政策</a>及所选模型的数据政策。AsterTab 不会自动重试或切换模型。</p>
         <h3>当前选中的资料</h3>
-        <pre id="diagnostic-preview" tabIndex={0}>{preview}</pre>
+        <pre id="diagnostic-preview" tabIndex={0}>{conversationMode ? turns[0]!.content : preview}</pre>
         <details open>
           <summary>完整 JSON 请求正文（不含 API key）</summary>
           <pre id="openrouter-request-preview" tabIndex={0}>{outbound.serialized || outbound.error}</pre>
         </details>
-        <p class="draft-help">请求上下文 {preview.length.toLocaleString("zh-CN")} / {OPENROUTER_MAX_CONTEXT_CHARACTERS.toLocaleString("zh-CN")} 个字符</p>
+        <p class="draft-help">请求上下文 {(conversationMode
+          ? DIAGNOSTIC_SYSTEM_PROMPT.length + turns.reduce((sum, turn) => sum + turn.content.length, 0) + followUp.trim().length
+          : preview.length).toLocaleString("zh-CN")} / {OPENROUTER_MAX_CONTEXT_CHARACTERS.toLocaleString("zh-CN")} 个字符{conversationMode ? "（含系统提示与全部历史）" : ""}</p>
         {outbound.error && modelId.trim() && <p role="alert">{outbound.error}</p>}
         {outbound.error && !modelId.trim() && <p class="draft-help">{outbound.error}</p>}
         <label class="draft-check"><input
@@ -543,10 +566,23 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
         </button>
         {sendError && <p role="alert">{sendError}</p>}
         {sending && <p role="status">请求最多等待 60 秒，不会自动重试。</p>}
-        {diagnosis && diagnosisPayload === outbound.serialized && <section aria-labelledby="diagnosis-result-title">
+        {diagnosis && (conversationMode || diagnosisPayload === outbound.serialized) && <section aria-labelledby="diagnosis-result-title">
           <h3 id="diagnosis-result-title">诊断结果</h3>
           <pre class="diagnosis-result" tabIndex={0}>{diagnosis}</pre>
         </section>}
+        {conversationMode && <>
+          <details class="draft-history">
+            <summary>对话历史（{Math.floor(turns.length / 2)} 轮，仅保存在本页内存，关闭草稿即清空）</summary>
+            {turns.map((turn, index) => (
+              <div class="draft-history-turn" key={index}>
+                <p class="draft-help">{turn.role === "user" ? "用户" : "助手"}</p>
+                <pre tabIndex={0}>{turn.content}</pre>
+              </div>
+            ))}
+          </details>
+          <label for="diagnostic-followup">继续追问</label>
+          <textarea id="diagnostic-followup" value={followUp} maxLength={20000} rows={3} placeholder="针对最新诊断继续提问；发送前会重新生成完整请求预览，需再次确认" onInput={event => { invalidateConfirmation(); setFollowUp(event.currentTarget.value); }} />
+        </>}
       </section>
     </main>
   );

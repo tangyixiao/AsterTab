@@ -16,7 +16,7 @@ export type OpenRouterRequestBody = {
   stream: false;
 };
 
-const DIAGNOSTIC_SYSTEM_PROMPT = [
+export const DIAGNOSTIC_SYSTEM_PROMPT = [
   "你是 AsterTab 的学习诊断助手。只根据用户明确提供的请求和资料作判断；不要联网、调用工具或补造事实。",
   "先判断最可能的卡点阶段：题意理解、建模、算法选择、复杂度、实现、调试、提交反馈。证据不足或相互矛盾时，明确指出不确定性和缺失信息。",
   "请依次给出：可能卡点阶段、对应证据、尚缺信息、一个最小下一步。将推断表述为‘目前证据较像’等可能性判断。",
