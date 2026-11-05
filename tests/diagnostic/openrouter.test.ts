@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildOpenRouterConversationRequestBody,
   buildOpenRouterRequestBody,
   serializeOpenRouterRequestBody,
   sendOpenRouterRequest,
+  type ConversationMessage,
 } from "../../src/integrations/ai/openrouter";
 
 const userContent = "学习诊断请求\n判断这个 WA 提交卡在哪\n\n已选资料\n[提交] record 42\nWA on test 3";
@@ -177,5 +179,76 @@ describe("OpenRouter diagnostic requests", () => {
     expect(error?.message).not.toContain("private transport detail");
     expect(error?.message).not.toContain("sk-or-test-secret");
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("stateless multi-turn diagnosis requests", () => {
+  const turns: readonly ConversationMessage[] = [
+    { role: "user", content: "判断这个 WA 提交卡在哪" },
+    { role: "assistant", content: "目前证据较像卡在调试。" },
+    { role: "user", content: "再给我一个最小下一步" },
+  ];
+
+  it("sends system + full history + latest question with no tools", () => {
+    const body = buildOpenRouterConversationRequestBody(model, turns);
+    expect(body).toMatchObject({
+      model,
+      stream: false,
+      max_tokens: 1200,
+      messages: [
+        { role: "system", content: expect.stringContaining("不直接给完整题解") },
+        { role: "user", content: turns[0]!.content },
+        { role: "assistant", content: turns[1]!.content },
+        { role: "user", content: turns[2]!.content },
+      ],
+    });
+    expect("tools" in body).toBe(false);
+    expect(JSON.parse(serializeOpenRouterRequestBody(body))).toEqual(body);
+  });
+
+  it("a single user turn is a valid conversation", () => {
+    const single = buildOpenRouterConversationRequestBody(model, [{ role: "user", content: userContent }]);
+    expect(single.messages).toHaveLength(2);
+    expect(single.messages[1]).toEqual({ role: "user", content: userContent });
+    expect(single).toEqual(buildOpenRouterRequestBody(model, userContent));
+  });
+
+  it("rejects malformed or non-alternating conversations", () => {
+    expect(() => buildOpenRouterConversationRequestBody(model, [])).toThrow(/对话内容为空/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [{ role: "assistant", content: "x" }])).toThrow(/格式|开头|交替/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [
+      { role: "user", content: "a" }, { role: "assistant", content: "b" },
+    ])).toThrow(/结尾/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [
+      { role: "user", content: "a" }, { role: "user", content: "b" },
+    ])).toThrow(/交替/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [{ role: "user", content: "   " }])).toThrow(/格式/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [{ role: "tool", content: "x" } as unknown as ConversationMessage])).toThrow(/格式/);
+    expect(() => buildOpenRouterConversationRequestBody("  ", turns)).toThrow(/模型/);
+  });
+
+  it("enforces the 50,000-character limit on the whole conversation", () => {
+    expect(() => buildOpenRouterConversationRequestBody(model, [
+      { role: "user", content: "x".repeat(50_000) },
+    ])).toThrow(/过长|50,000/);
+    expect(() => buildOpenRouterConversationRequestBody(model, [
+      { role: "user", content: "x".repeat(49_000) },
+    ])).not.toThrow();
+  });
+
+  it("sendOpenRouterRequest transmits the serialized conversation with the key only in the header", async () => {
+    const body = buildOpenRouterConversationRequestBody(model, turns);
+    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
+      choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "最小下一步：检查 test 3。" } }],
+    }), { status: 200 }));
+
+    await expect(sendOpenRouterRequest("sk-or-test-secret", body, fetcher as typeof fetch)).resolves.toBe("最小下一步：检查 test 3。");
+    expect(fetcher).toHaveBeenCalledWith("https://openrouter.ai/api/v1/chat/completions", expect.objectContaining({
+      method: "POST",
+      body: serializeOpenRouterRequestBody(body),
+      headers: { Authorization: "Bearer sk-or-test-secret", "Content-Type": "application/json" },
+    }));
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).not.toContain("sk-or-test-secret");
+    expect(String(fetcher.mock.calls[0]?.[1]?.body)).toContain("再给我一个最小下一步");
   });
 });

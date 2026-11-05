@@ -4,11 +4,13 @@ export const OPENROUTER_MAX_CONTEXT_CHARACTERS = 50_000;
 export const OPENROUTER_MAX_RESPONSE_BYTES = 1_000_000;
 export const OPENROUTER_MAX_OUTPUT_TOKENS = 1_200;
 
+export type ConversationMessage = { role: "user" | "assistant"; content: string };
+
 export type OpenRouterRequestBody = {
   model: string;
   messages: [
     { role: "system"; content: string },
-    { role: "user"; content: string },
+    ...ConversationMessage[],
   ];
   max_tokens: number;
   stream: false;
@@ -36,6 +38,46 @@ export function buildOpenRouterRequestBody(modelId: string, userContent: string)
     messages: [
       { role: "system", content: DIAGNOSTIC_SYSTEM_PROMPT },
       { role: "user", content: userContent },
+    ],
+    max_tokens: OPENROUTER_MAX_OUTPUT_TOKENS,
+    stream: false,
+  };
+}
+
+export function buildOpenRouterConversationRequestBody(
+  modelId: string,
+  turns: readonly ConversationMessage[],
+): OpenRouterRequestBody {
+  const model = modelId.trim();
+  if (!model || model.length > 200 || /[\s\u0000-\u001f]/.test(model)) {
+    throw new Error("请填写有效的 OpenRouter 模型 ID。可从模型目录复制，例如 provider/model。");
+  }
+  if (!Array.isArray(turns) || turns.length === 0) {
+    throw new Error("对话内容为空，未发送请求。");
+  }
+  for (const turn of turns) {
+    if (!turn || (turn.role !== "user" && turn.role !== "assistant") || typeof turn.content !== "string" || !turn.content.trim()) {
+      throw new Error("对话消息格式无效。");
+    }
+  }
+  for (let index = 0; index < turns.length; index += 1) {
+    const expected = index % 2 === 0 ? "user" : "assistant";
+    if (turns[index]!.role !== expected) {
+      throw new Error("对话消息必须以用户提问开头，并在 user / assistant 之间交替。");
+    }
+  }
+  if (turns[turns.length - 1]!.role !== "user") {
+    throw new Error("对话必须以用户的最新追问结尾。");
+  }
+  const totalContext = DIAGNOSTIC_SYSTEM_PROMPT.length + turns.reduce((sum, turn) => sum + turn.content.length, 0);
+  if (totalContext > OPENROUTER_MAX_CONTEXT_CHARACTERS) {
+    throw new Error(`对话内容过长，请删减到 ${OPENROUTER_MAX_CONTEXT_CHARACTERS.toLocaleString("en-US")} 个字符以内。`);
+  }
+  return {
+    model,
+    messages: [
+      { role: "system", content: DIAGNOSTIC_SYSTEM_PROMPT },
+      ...turns.map(turn => ({ role: turn.role, content: turn.content })),
     ],
     max_tokens: OPENROUTER_MAX_OUTPUT_TOKENS,
     stream: false,
