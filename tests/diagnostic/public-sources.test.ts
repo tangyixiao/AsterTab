@@ -77,4 +77,37 @@ describe("selected public source readers", () => {
     await expect(readGitHubFile(githubFile("src/file.ts"), limited)).rejects.toThrow(/GitHub.*403.*受限/);
     expect(limited).toHaveBeenCalledTimes(1);
   });
+
+  it("adds the PAT as a bearer header only for the GitHub API request", async () => {
+    const content = btoa("int main() {}\n");
+    const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ type: "file", size: 14, encoding: "base64", content }), { status: 200 }));
+    const source = await readGitHubFile(githubFile("src/main.cpp"), fetcher, "github_pat_secret");
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith(`https://api.github.com/repos/a/b/contents/src/main.cpp?ref=${SHA}`, {
+      credentials: "omit", redirect: "error",
+      headers: { Accept: "application/vnd.github+json", Authorization: "Bearer github_pat_secret" },
+    });
+    expect(source.kind).toBe("code");
+    expect(source.text).toBe("int main() {}\n");
+    for (const value of [source.id, source.label, source.url, source.text]) expect(value).not.toContain("github_pat_secret");
+    expect(String(fetcher.mock.calls[0]?.[0])).not.toContain("github_pat_secret");
+  });
+
+  it("sends no Authorization header when the PAT is missing or blank", async () => {
+    const content = btoa("int main() {}\n");
+    for (const pat of [undefined, "   "]) {
+      const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ type: "file", size: 14, encoding: "base64", content }), { status: 200 }));
+      await readGitHubFile(githubFile("src/main.cpp"), fetcher, pat);
+      expect(fetcher).toHaveBeenCalledExactlyOnceWith(`https://api.github.com/repos/a/b/contents/src/main.cpp?ref=${SHA}`, {
+        credentials: "omit", redirect: "error",
+        headers: { Accept: "application/vnd.github+json" },
+      });
+    }
+  });
+
+  it("never echoes the PAT in a failing GitHub response", async () => {
+    const denied = vi.fn(async () => new Response("no access", { status: 404 }));
+    const error = await readGitHubFile(githubFile("src/file.ts"), denied, "github_pat_secret").then(() => undefined, value => value as Error);
+    expect(error?.message).toContain("404");
+    expect(error?.message).not.toContain("github_pat_secret");
+  });
 });

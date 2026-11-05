@@ -114,9 +114,12 @@ export async function readLuoguProblem(inputUrl: string, fetcher: typeof fetch):
   return { id: `luogu:${pid}`, kind: "problem", label: `${pid} ${problem.name}`, url, text };
 }
 
-export async function readGitHubFile(inputUrl: string, fetcher: typeof fetch): Promise<DiagnosticSource> {
+export async function readGitHubFile(inputUrl: string, fetcher: typeof fetch, pat?: string): Promise<DiagnosticSource> {
   const target = parseGitHubFileUrl(inputUrl);
-  const body = await fetchSelected(target.apiUrl, fetcher, { Accept: "application/vnd.github+json" });
+  const token = pat?.trim();
+  const headers: Record<string, string> = { Accept: "application/vnd.github+json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const body = await fetchSelected(target.apiUrl, fetcher, headers);
   const file = record(JSON.parse(body));
   if (file.type !== "file" || file.encoding !== "base64" || typeof file.content !== "string" || typeof file.size !== "number" || file.size > MAX_FILE_BYTES) {
     throw new Error("GitHub 返回的不是可读取的文本文件，请粘贴代码。");
