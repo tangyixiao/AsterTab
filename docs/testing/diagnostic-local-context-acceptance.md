@@ -146,3 +146,23 @@ node tests/browser/diagnostic-openrouter.mjs --live --headed --playwright-core '
 ```
 
 **Successful live inference with a real API key remains unverified.** With the browser left open after the checks, entering a real key manually and sending once would complete that path; the harness itself keeps runs keyless by default.
+
+## The `--expect-200` success path
+
+Date: 2026-11-06 (Asia/Shanghai). The 401 path above proves the request reaches OpenRouter and that failures surface honestly, but it cannot prove a successful inference. `--expect-200` closes that gap without weakening the keyless default.
+
+It implies `--live` and requires two things before touching the network:
+
+- `OPENROUTER_LIVE_KEY` in the environment, holding a real key. It is read once into memory and appears only in the `Authorization` header; the harness never prints it, writes it to disk or commits it.
+- `--model` naming a model the account can actually serve, for example a `:free` variant.
+
+Both guards exit 1 with an explanation rather than proceeding, so a missing key can never be mistaken for a passing run.
+
+The success assertions reuse the live flow instead of adding a parallel one: after a human approves the native host-permission prompt, the same confirmed request resumes, and `.diagnosis-result` only renders when the adapter saw HTTP 200, no error envelope, `finish_reason !== "error"` and non-empty assistant text. The check then asserts that text is non-empty, the body sent equals the preview, the key is in the header and absent from both the body and the page, no alert is present, and the confirmation was consumed. A 402 or 429 surfaces as an alert and fails the run; it is never reported as success.
+
+```powershell
+$env:OPENROUTER_LIVE_KEY = '<real key>'
+node tests/browser/diagnostic-openrouter.mjs --expect-200 --model google/gemma-4-31b-it:free --headed --playwright-core 'D:\tangyixiao.github.io\node_modules\playwright-core\index.mjs'
+```
+
+**`--expect-200` has not been run with a real key yet**, so successful live inference remains unverified. The default stub path is unchanged and still passes all 12 checks on Chrome 156.0.8078.80; the disposable-key 401 live path is likewise unchanged.
