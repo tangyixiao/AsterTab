@@ -10,10 +10,11 @@ import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 if (args.includes("--help")) {
-  console.log("Usage: node tests/browser/diagnostic-openrouter.mjs [--live] [--headed] [--playwright-core PATH_TO_INDEX_MJS] [--browser PATH_TO_BROWSER_EXE] [--build PATH_TO_PRODUCTION_BUILD] [--output ARTIFACT_DIRECTORY]\nDefault mode intercepts every external request and uses a fake API key. --live lets openrouter.ai requests reach the real network; the first send raises the native host-permission prompt which must be approved by a human, so combine with --headed and a disposable real API key (expected result on an invalid key: a 401 alert). --headed keeps the browser visible and leaves it open after checks.");
+  console.log("Usage: node tests/browser/diagnostic-openrouter.mjs [--live] [--live-success] [--headed] [--playwright-core PATH_TO_INDEX_MJS] [--browser PATH_TO_BROWSER_EXE] [--build PATH_TO_PRODUCTION_BUILD] [--output ARTIFACT_DIRECTORY]\nDefault mode intercepts every external request and uses a fake API key. --live lets openrouter.ai requests reach the real network; the first send raises the native host-permission prompt which must be approved by a human, so combine with --headed and a disposable real API key (expected result on an invalid key: a 401 alert). --live-success is a separate success path: it requires a real key in ASTERTAB_LIVE_KEY (and optionally ASTERTAB_LIVE_MODEL, default google/gemma-4-31b-it:free) and asserts a real HTTP 200 with non-empty diagnosis text; it never invents a key and stops honestly on 402/429. --headed keeps the browser visible and leaves it open after checks.");
   process.exit(0);
 }
 const liveMode = args.includes("--live");
+const liveSuccessMode = args.includes("--live-success");
 const headed = args.includes("--headed");
 function argument(name, fallback) {
   const index = args.indexOf(name);
@@ -47,7 +48,7 @@ try {
   await context.route("**/*", async route => {
     const request = route.request();
     if (request.url().startsWith("chrome-extension://")) return route.continue();
-    if (liveMode && request.url() === endpoint) {
+    if ((liveMode || liveSuccessMode) && request.url() === endpoint) {
       requests.push({ body: request.postData(), headers: request.headers() });
       return route.continue();
     }
@@ -103,6 +104,69 @@ try {
     await consent().check();
     await page.waitForFunction(() => [...document.querySelectorAll("button")].find(item => item.textContent === "确认并发送诊断")?.disabled === false);
   }
+
+  if (liveSuccessMode) {
+    // Dedicated success path: a REAL key must reach the real endpoint and come
+    // back with HTTP 200 and non-empty assistant text. It is a separate mode so
+    // the default keyless regression keeps asserting the 401 path.
+    if (!headed) throw new Error("--live-success needs --headed: the native host-permission prompt must be approved by a human.");
+    const liveKey = (process.env.ASTERTAB_LIVE_KEY ?? "").trim();
+    const liveModel = (process.env.ASTERTAB_LIVE_MODEL ?? "google/gemma-4-31b-it:free").trim();
+    if (!liveKey) throw new Error("--live-success needs a real key in ASTERTAB_LIVE_KEY. The harness never invents one.");
+    await openDraft("判断 WA 卡在哪");
+    await page.locator("#openrouter-model").fill(liveModel);
+    await button("保存模型").click();
+    await page.getByRole("status").filter({ hasText: "模型 ID 已保存" }).waitFor();
+    await page.locator("#openrouter-api-key").fill(liveKey);
+    await button("保存到当前会话").click();
+    await page.getByRole("status").filter({ hasText: "API key 仅保存" }).waitFor();
+    await page.locator("#submission-text-1").fill("WA on test 3");
+    await confirm();
+    await send().click();
+    const granted = await page.evaluate(() => chrome.permissions.contains({ origins: ["https://openrouter.ai/*"] }));
+    if (!granted) console.log("ACTION NEEDED: approve the native OpenRouter host permission prompt in the browser window (Ctrl+C aborts).");
+    // Either the grant is immediate (already approved) or a human approves it now.
+    // Then wait for an actual diagnosis body instead of an error alert.
+    const sawResult = await (async () => {
+      const deadline = Date.now() + 300_000;
+      while (Date.now() < deadline) {
+        if (await page.locator(".diagnosis-result").count() > 0) return true;
+        const alerts = await page.locator('[role="alert"]').allTextContents();
+        const blocking = alerts.filter(text => !text.includes("未获得 OpenRouter"));
+        if (blocking.length > 0) throw new Error(`live success failed with alert: ${blocking.join(" | ")}`);
+        await new Promise(resolveWait => setTimeout(resolveWait, 250));
+      }
+      return false;
+    })();
+    if (!sawResult) throw new Error("timed out waiting for a successful diagnosis result");
+    const resultText = (await page.locator(".diagnosis-result").textContent()).trim();
+    assert.ok(resultText.length > 0, "the successful diagnosis text must not be empty");
+    assert.equal(requests.length, 1);
+    const body = JSON.parse(requests[0].body);
+    assert.equal(body.model, liveModel);
+    assert.deepEqual(body.messages.map(turn => turn.role), ["system", "user"]);
+    assert.equal(requests[0].headers.authorization, `Bearer ${liveKey}`);
+    assert.ok(!requests[0].body.includes(liveKey), "the key must never appear in the request body");
+    assert.ok(!(await page.locator("body").textContent()).includes(liveKey));
+    assert.equal(await consent().isChecked(), false);
+    checks.push("a real key got HTTP 200 with non-empty diagnosis text over the real OpenRouter endpoint");
+    const liveResult = {
+      browser: await browser.version(), build: extensionPath, mode: "live-success", checks,
+      model: liveModel, apiRequests: "1 real request to https://openrouter.ai/api/v1/chat/completions",
+      responseStatus: 200, diagnosisCharacters: resultText.length,
+      unexpectedExternalRequests: unexpectedRequests, pageErrors: errors,
+      permissionBoundary: "native prompt approved by a human",
+    };
+    if (output) {
+      await mkdir(resolve(output), { recursive: true });
+      await writeFile(resolve(output, "diagnostic-live-success.json"), JSON.stringify(liveResult, null, 2));
+      await page.screenshot({ path: resolve(output, "diagnostic-live-success.png"), fullPage: true });
+    }
+    console.log(JSON.stringify(liveResult, null, 2));
+    if (headed) await new Promise(() => {});
+    await context.close();
+    process.exit(0);
+  }
   await openDraft();
   assert.equal(await send().isEnabled(), false);
   await page.locator("#openrouter-model").fill(model);
@@ -118,6 +182,23 @@ try {
   assert.equal(requests.length, 0);
   if (!liveMode) assert.equal(await page.evaluate(() => window.permissionCalls.length), 0);
   checks.push("saving uses real local/session storage and makes no request or permission call");
+
+  // A fine-grained GitHub PAT may only live in session storage. It must never
+  // reach the context preview, the outbound AI request body or local storage.
+  const fakePat = "github_pat_browser_test_only";
+  await page.locator("#github-pat").fill(fakePat);
+  await button("保存 PAT 到当前会话").click();
+  await page.getByRole("status").filter({ hasText: "PAT 仅保存在" }).waitFor();
+  assert.equal(await page.locator("#github-pat").inputValue(), "");
+  assert.deepEqual(await page.evaluate(() => chrome.storage.session.get(null)), { openrouterApiKey: fakeKey, githubPrivatePat: fakePat });
+  assert.deepEqual(await page.evaluate(() => chrome.storage.local.get(null)), { openrouterModelId: model });
+  assert.ok(!(await page.locator("#diagnostic-preview").textContent()).includes(fakePat));
+  assert.ok(!(await page.locator("#openrouter-request-preview").textContent()).includes(fakePat));
+  checks.push("a GitHub PAT is kept in session storage only and never reaches the preview or request body");
+
+  await button("清除当前会话 PAT").click();
+  await page.getByRole("status").filter({ hasText: "GitHub PAT 已清除" }).waitFor();
+  assert.deepEqual(await page.evaluate(() => chrome.storage.session.get(null)), { openrouterApiKey: fakeKey });
 
   await page.locator("#submission-text-1").fill("WA on test 3; <script>alert(1)</script>");
   await button("添加提交记录").click();
@@ -214,11 +295,37 @@ try {
     assert.ok(permissions.every(item => JSON.stringify(item) === JSON.stringify({ origins: ["https://openrouter.ai/*"] })));
     checks.push("send body equals preview, key stays in header, result renders as text and confirmation is consumed");
 
+    // Multi-turn: freeze the answer into in-memory history, then send a follow-up
+    // that resends system + the whole committed history + the new question.
+    await button("保留这轮回答，准备追问").click();
+    await page.getByRole("heading", { name: "继续追问" }).waitFor();
+    assert.equal(await page.locator(".diagnosis-result").count(), 0);
+    await page.locator("#follow-up-input").fill("只给一个最小提示");
+    await confirm();
+    const followPreview = await page.locator("#openrouter-request-preview").textContent();
+    assert.ok(followPreview.includes("只给一个最小提示"));
+    assert.ok(followPreview.includes("较像卡在调试"));
+    assert.ok(!followPreview.includes(fakeKey));
+    await send().click();
+    await page.locator(".diagnosis-result").waitFor();
+    assert.equal(requests.length, 2);
+    const followBody = JSON.parse(requests[1].body);
+    assert.deepEqual(followBody.messages.map(turn => turn.role), ["system", "user", "assistant", "user"]);
+    assert.equal(followBody.messages[3].content, "只给一个最小提示");
+    assert.ok(followBody.messages[2].content.includes("较像卡在调试"));
+    assert.equal(requests[1].headers.authorization, `Bearer ${fakeKey}`);
+    assert.deepEqual(await page.evaluate(() => chrome.storage.local.get(null)), { openrouterModelId: model });
+    checks.push("multi-turn: a follow-up resends system + committed history + the new question and keeps history out of storage");
+
+    await button("开始新诊断（清空对话）").click();
+    assert.equal(await page.locator(".diagnosis-result").count(), 0);
+    await page.waitForFunction(() => !document.querySelector("#openrouter-request-preview").textContent.includes("只给一个最小提示"));
+
     responseMode = "unauthorized";
     await confirm();
     await send().click();
     await page.getByRole("alert").filter({ hasText: "401" }).waitFor();
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3);
     assert.equal(await page.locator(".diagnosis-result").count(), 0);
     assert.ok(!(await page.locator("body").textContent()).includes("private provider detail"));
     assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("WA on test 3"));
@@ -253,7 +360,7 @@ try {
   await openDraft("offline diagnostic");
   assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("offline diagnostic"));
   assert.equal(await send().isEnabled(), false);
-  assert.equal(requests.length, liveMode ? 2 : 3);
+  assert.equal(requests.length, liveMode ? 2 : 4);
   checks.push("offline reload preserves the command entry and local diagnostic editing without an AI call");
 
   assert.deepEqual(unexpectedRequests, []);

@@ -4,7 +4,8 @@ import { browser } from "wxt/browser";
 import { buildContextPreview, type DiagnosticSource } from "../../core/diagnostic/context-preview";
 import { isCurrentConfirmedRequest } from "../../core/diagnostic/confirmed-request";
 import { createGitHubCodeDraft, getSelectedGitHubCodeSources, removeGitHubCodeDraft, updateGitHubCodeDraft, type GitHubCodeDraft } from "../../core/diagnostic/github-code-drafts";
-import { buildOpenRouterRequestBody, OPENROUTER_HOST_PERMISSION, OPENROUTER_MAX_CONTEXT_CHARACTERS, sendOpenRouterRequest, serializeOpenRouterRequestBody, type OpenRouterRequestBody } from "../../integrations/ai/openrouter";
+import { createGitHubPrivateAccess } from "../../core/diagnostic/private-access";
+import { buildOpenRouterConversationRequestBody, OPENROUTER_HOST_PERMISSION, OPENROUTER_MAX_CONTEXT_CHARACTERS, sendOpenRouterRequest, serializeOpenRouterRequestBody, type ConversationMessage } from "../../integrations/ai/openrouter";
 import { createOpenRouterSettings } from "../../integrations/ai/openrouter-settings";
 import { parseGitHubFileUrl, parseLuoguProblemUrl, readGitHubFile, readLuoguProblem } from "../../core/diagnostic/public-sources";
 import { createSubmissionDraft, getSelectedSubmissionSources, removeSubmissionDraft, updateSubmissionDraft, type SubmissionDraft } from "../../core/diagnostic/submission-drafts";
@@ -33,6 +34,14 @@ const openRouterSettings = createOpenRouterSettings(
   },
 );
 
+// The fine-grained PAT lives only in the browser session, with the same lifetime as the API key.
+// It is never part of the preview, the AI request body or any log.
+const githubPrivateAccess = createGitHubPrivateAccess({
+  get: async key => (await browser.storage.session.get(key))[key],
+  set: async (key, value) => browser.storage.session.set({ [key]: value }),
+  remove: async key => browser.storage.session.remove(key),
+});
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "读取失败，请粘贴内容。";
 }
@@ -51,6 +60,16 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   const [sendError, setSendError] = useState("");
   const [diagnosis, setDiagnosis] = useState("");
   const [diagnosisPayload, setDiagnosisPayload] = useState("");
+  // Multi-turn history lives only in this component's memory. It is committed
+  // exclusively when the user starts a follow-up, so the single-shot send flow
+  // stays repeatable and the browser acceptance harness keeps working.
+  const [conversation, setConversation] = useState<ConversationMessage[]>([]);
+  const [followUp, setFollowUp] = useState("");
+  const [githubPatInput, setGithubPatInput] = useState("");
+  const [hasGithubPat, setHasGithubPat] = useState(false);
+  const [githubPatMessage, setGithubPatMessage] = useState("");
+  const [githubPatError, setGithubPatError] = useState("");
+  const [githubPatBusy, setGithubPatBusy] = useState(false);
   const [problemInputUrl, setProblemInputUrl] = useState("");
   const [problemLabel, setProblemLabel] = useState("洛谷题目");
   const [problemText, setProblemText] = useState("");
@@ -69,6 +88,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   const draftActive = useRef(true);
   const activeSend = useRef<AbortController | undefined>(undefined);
   const sendInProgress = useRef(false);
+  const lastSentTurns = useRef<ConversationMessage[]>([]);
 
   function invalidateConfirmation(): void {
     latestConfirmation.current = "";
@@ -108,25 +128,34 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   selectedSources.push(...getSelectedSubmissionSources(submissionDrafts));
   selectedSources.push(...getSelectedGitHubCodeSources(codeDrafts));
   const preview = buildContextPreview(requestText, selectedSources);
+  const inFollowUp = conversation.length > 0;
   const outbound = useMemo(() => {
-    if (!modelId.trim()) return { body: undefined, serialized: "", error: "请先设置 OpenRouter 模型 ID。" };
-    try {
-      const body = buildOpenRouterRequestBody(modelId, preview);
-      return { body, serialized: serializeOpenRouterRequestBody(body), error: "" };
-    } catch (error) {
-      return { body: undefined, serialized: "", error: errorMessage(error) };
+    if (!modelId.trim()) return { body: undefined, turns: [] as ConversationMessage[], serialized: "", error: "请先设置 OpenRouter 模型 ID。" };
+    const currentUserContent = inFollowUp ? followUp : preview;
+    if (inFollowUp && !currentUserContent.trim()) {
+      return { body: undefined, turns: [] as ConversationMessage[], serialized: "", error: "请输入本轮追问内容。" };
     }
-  }, [modelId, preview]);
+    const turns: ConversationMessage[] = [...conversation, { role: "user", content: currentUserContent }];
+    try {
+      const body = buildOpenRouterConversationRequestBody(modelId, turns);
+      return { body, turns, serialized: serializeOpenRouterRequestBody(body), error: "" };
+    } catch (error) {
+      return { body: undefined, turns, serialized: "", error: errorMessage(error) };
+    }
+  }, [modelId, preview, conversation, followUp, inFollowUp]);
   latestPayload.current = outbound.serialized;
   latestConfirmation.current = confirmedPayload;
   const readingSources = problemLoading || codeDrafts.some(draft => draft.loading);
+  const contextLength = [...conversation, { role: "user" as const, content: inFollowUp ? followUp : preview }]
+    .reduce((sum, turn) => sum + turn.content.length, 0);
 
   useEffect(() => {
     let active = true;
-    void openRouterSettings.load().then(settings => {
+    void Promise.all([openRouterSettings.load(), githubPrivateAccess.read()]).then(([settings, pat]) => {
       if (!active) return;
       setModelId(settings.modelId);
       setHasSessionKey(settings.hasApiKey);
+      setHasGithubPat(pat.trim().length > 0);
       setSettingsReady(true);
     }).catch(error => {
       if (!active) return;
@@ -139,8 +168,6 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
   useEffect(() => {
     invalidateConfirmation();
     setSendError("");
-    setDiagnosis("");
-    setDiagnosisPayload("");
   }, [outbound.serialized]);
 
   async function readProblem(): Promise<void> {
@@ -187,7 +214,9 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
     try {
       if (!await browser.permissions.request({ origins: [GITHUB_API_ORIGIN] })) throw new Error("未获得 GitHub 读取权限，可直接粘贴代码。");
       if (version !== codeReadVersions.current.get(id)) return;
-      const source = await readGitHubFile(url, fetch);
+      const pat = await githubPrivateAccess.read();
+      if (version !== codeReadVersions.current.get(id)) return;
+      const source = await readGitHubFile(url, fetch, pat || undefined);
       if (version !== codeReadVersions.current.get(id)) return;
       updateCodeDraft(id, { label: source.label, text: source.text, sourceUrl: source.url, included: true });
     } catch (error) {
@@ -275,9 +304,70 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
     }
   }
 
+  async function saveGithubPat(): Promise<void> {
+    setGithubPatBusy(true);
+    setGithubPatMessage("");
+    setGithubPatError("");
+    try {
+      await githubPrivateAccess.save(githubPatInput);
+      setGithubPatInput("");
+      setHasGithubPat(true);
+      setGithubPatMessage("PAT 仅保存在当前浏览器会话内存中，只对 api.github.com 请求生效。");
+    } catch (error) {
+      setGithubPatError(errorMessage(error));
+    } finally {
+      setGithubPatBusy(false);
+    }
+  }
+
+  async function removeGithubPat(): Promise<void> {
+    setGithubPatBusy(true);
+    setGithubPatMessage("");
+    setGithubPatError("");
+    try {
+      await githubPrivateAccess.remove();
+      setHasGithubPat(false);
+      setGithubPatMessage("当前会话中的 GitHub PAT 已清除。");
+    } catch (error) {
+      setGithubPatError(errorMessage(error));
+    } finally {
+      setGithubPatBusy(false);
+    }
+  }
+
+  // Freeze the round that just produced a diagnosis into the in-memory history.
+  // It only depends on what was actually sent plus its answer, never on the draft
+  // of the next question, so typing ahead cannot disable the commit button.
+  // `diagnosis` is cleared at the start of every send and after a commit, so a
+  // single answer can be committed exactly once.
+  function commitAnswerToHistory(): void {
+    if (!diagnosis || sending) return;
+    const previousTurns = lastSentTurns.current;
+    if (previousTurns.length === 0) return;
+    setConversation([...previousTurns, { role: "assistant", content: diagnosis }]);
+    // The committed question is now part of the history; clear the box so the
+    // next round starts from an empty prompt instead of resending the old one.
+    setFollowUp("");
+    setDiagnosis("");
+    setDiagnosisPayload("");
+    invalidateConfirmation();
+    setSendError("");
+  }
+
+  function startNewDiagnosis(): void {
+    setConversation([]);
+    setFollowUp("");
+    setDiagnosis("");
+    setDiagnosisPayload("");
+    lastSentTurns.current = [];
+    invalidateConfirmation();
+    setSendError("");
+  }
+
   async function sendDiagnosis(): Promise<void> {
     const payloadAtClick = outbound.serialized;
     const bodyAtClick = outbound.body;
+    const turnsAtClick = outbound.turns;
     if (!payloadAtClick || !bodyAtClick || !isCurrentConfirmedRequest(payloadAtClick, latestPayload.current, latestConfirmation.current, draftActive.current)) return;
     if (!settingsReady || !hasSessionKey || readingSources || sending || sendInProgress.current) return;
 
@@ -315,6 +405,7 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
       const controller = new AbortController();
       activeSend.current = controller;
+      lastSentTurns.current = turnsAtClick;
       const result = await sendOpenRouterRequest(apiKey, bodyAtClick, fetch, controller.signal);
       if (!draftActive.current) return;
       setDiagnosis(result);
@@ -402,11 +493,11 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
 
       <fieldset>
         <legend>GitHub 代码</legend>
-        <p class="draft-help">只读取你指定的公开文件。自动读取仅支持包含 40 位提交 SHA 的文件永久链接；其他情况请粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
+        <p class="draft-help">只读取你指定的文件；私有仓库需在下方填入只读细粒度 PAT。自动读取仅支持包含 40 位提交 SHA 的文件永久链接；其他情况请粘贴代码。站点访问权限可在浏览器扩展设置中撤销。</p>
         {codeDrafts.map((draft, index) => (
           <fieldset class="draft-code-source" key={draft.id}>
             <legend>GitHub 文件 {index + 1}</legend>
-            <label for={`code-url-${draft.id}`}>公开文件 URL</label>
+            <label for={`code-url-${draft.id}`}>文件 URL</label>
             <div class="draft-read-row">
               <input id={`code-url-${draft.id}`} type="url" value={draft.inputUrl} placeholder="https://github.com/owner/repo/blob/提交SHA/file.cpp" onInput={event => {
                 invalidateCodeRead(draft.id);
@@ -442,6 +533,19 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
       </fieldset>
 
       <fieldset>
+        <legend>GitHub 私有仓库访问（可选）</legend>
+        <p class="draft-help">读取私有仓库文件时，请在 GitHub 创建只读、仅授权指定仓库的细粒度 PAT。PAT 仅保存在当前浏览器会话内存中，只对 <code>api.github.com</code> 请求添加 Authorization 头；不会进入资料预览、AI 请求正文或日志。可随时在 GitHub 设置中撤销。</p>
+        <label for="github-pat">GitHub 细粒度 PAT</label>
+        <div class="draft-read-row">
+          <input id="github-pat" type="password" value={githubPatInput} maxLength={500} disabled={!settingsReady || githubPatBusy} autoComplete="off" spellcheck={false} placeholder={hasGithubPat ? "当前会话已保存；输入新 PAT 可替换" : "github_pat_…"} onInput={event => { setGithubPatInput(event.currentTarget.value); setGithubPatMessage(""); setGithubPatError(""); }} />
+          <button type="button" disabled={!settingsReady || githubPatBusy || !githubPatInput.trim()} onClick={() => { void saveGithubPat(); }}>保存 PAT 到当前会话</button>
+        </div>
+        {hasGithubPat && <button type="button" disabled={githubPatBusy} onClick={() => { void removeGithubPat(); }}>清除当前会话 PAT</button>}
+        {githubPatMessage && <p role="status">{githubPatMessage}</p>}
+        {githubPatError && <p role="alert">{githubPatError}</p>}
+      </fieldset>
+
+      <fieldset>
         <legend>OpenRouter 设置</legend>
         <p class="draft-help">模型 ID 会保存在此浏览器本地，不会同步。API key 只保存在当前浏览器会话内存中；浏览器关闭、扩展重载或更新后会清除。</p>
         <label for="openrouter-model">模型 ID</label>
@@ -464,16 +568,17 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
         <h2 id="preview-title">OpenRouter 请求预览</h2>
         <p>发送目标：<code>POST https://openrouter.ai/api/v1/chat/completions</code></p>
         <p class="draft-help">仅在点击发送后，浏览器才会申请访问 <code>openrouter.ai</code> 的主机权限；可随时在扩展设置中撤销。</p>
-        <p>API key 会通过 HTTPS Authorization header 发送，不包含在下方 JSON 正文中。正文会逐字使用当前预览和模型设置。</p>
+        <p>API key 会通过 HTTPS Authorization header 发送，不包含在下方 JSON 正文中。正文会逐字使用下方完整 JSON 请求正文与模型设置。</p>
         <p class="draft-help">确认后，所选资料会发送至 OpenRouter，并转交所选模型服务商处理。OpenRouter 说明不同模型服务商的数据保留和训练做法可能不同；发送前请查看 <a href={OPENROUTER_PRIVACY_URL} target="_blank" rel="noreferrer">OpenRouter 隐私政策</a>及所选模型的数据政策。AsterTab 不会自动重试或切换模型。</p>
         <h3>当前选中的资料</h3>
+        {inFollowUp && <p class="draft-help">本轮是追问：发送正文为下方完整 JSON（system + 全部历史问答 + 本轮追问）。上方资料仅供参照，不随追问重发。</p>}
         <pre id="diagnostic-preview" tabIndex={0}>{preview}</pre>
         <details open>
-          <summary>完整 JSON 请求正文（不含 API key）</summary>
+          <summary>完整 JSON 请求正文（不含 API key 与 GitHub PAT）</summary>
           <pre id="openrouter-request-preview" tabIndex={0}>{outbound.serialized || outbound.error}</pre>
         </details>
-        <p class="draft-help">请求上下文 {preview.length.toLocaleString("zh-CN")} / {OPENROUTER_MAX_CONTEXT_CHARACTERS.toLocaleString("zh-CN")} 个字符</p>
-        {outbound.error && modelId.trim() && <p role="alert">{outbound.error}</p>}
+        <p class="draft-help">对话正文 {contextLength.toLocaleString("zh-CN")} / {OPENROUTER_MAX_CONTEXT_CHARACTERS.toLocaleString("zh-CN")} 个字符（50,000 上限含固定系统提示）</p>
+        {outbound.error && modelId.trim() && <p role={outbound.error === "请输入本轮追问内容。" ? "status" : "alert"}>{outbound.error}</p>}
         {outbound.error && !modelId.trim() && <p class="draft-help">{outbound.error}</p>}
         <label class="draft-check"><input
           type="checkbox"
@@ -495,6 +600,26 @@ export function DiagnosticDraft({ request, onClose }: DiagnosticDraftProps): JSX
           <pre class="diagnosis-result" tabIndex={0}>{diagnosis}</pre>
         </section>}
       </section>
+
+      {(diagnosis || inFollowUp) && <section aria-labelledby="follow-up-title">
+        <h2 id="follow-up-title">继续追问</h2>
+        <p class="draft-help">追问会连同之前所有问答一起重新发送（无状态全量重发）。每轮都需在上方重新审阅完整 JSON 预览并重新勾选确认。对话历史只保留在当前页面内存，关闭草稿即清空。</p>
+        {diagnosis && <button type="button" disabled={sending} onClick={commitAnswerToHistory}>保留这轮回答，准备追问</button>}
+        <label for="follow-up-input">本轮追问</label>
+        <textarea id="follow-up-input" value={followUp} maxLength={10000} rows={2} placeholder="例如：请只给一个最小提示，不要展开完整题解" onInput={event => { setFollowUp(event.currentTarget.value); invalidateConfirmation(); setSendError(""); }} />
+        <button type="button" disabled={sending} onClick={startNewDiagnosis}>开始新诊断（清空对话）</button>
+        <details>
+          <summary>对话历史（{conversation.length} 条已固化消息）</summary>
+          {conversation.length === 0
+            ? <p class="draft-help">先点「保留这轮回答，准备追问」把首轮问答固化到历史。</p>
+            : <ol>{conversation.map((turn, index) => (
+              <li key={index}>
+                <strong>{turn.role === "user" ? "我" : "诊断"}：</strong>
+                <pre class="draft-turn" tabIndex={0}>{turn.content}</pre>
+              </li>
+            ))}</ol>}
+        </details>
+      </section>}
     </main>
   );
 }

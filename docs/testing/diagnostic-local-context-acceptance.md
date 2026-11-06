@@ -146,3 +146,33 @@ node tests/browser/diagnostic-openrouter.mjs --live --headed --playwright-core '
 ```
 
 **Successful live inference with a real API key remains unverified.** With the browser left open after the checks, entering a real key manually and sending once would complete that path; the harness itself keeps runs keyless by default.
+
+## Multi-turn follow-ups, private-file PAT and the live success path
+
+Date: 2026-11-06 (Asia/Shanghai). This follow-up implements the second and third increments of [the V1 increment design](../superpowers/specs/2026-11-05-astertab-v1-increments-design.md) and adds a dedicated success mode to the [browser harness](../../tests/browser/diagnostic-openrouter.mjs). It supersedes the preceding section's ten-check count; the earlier live 401 observation stands unchanged.
+
+Two UI capabilities were added on top of the existing single-shot draft:
+
+1. **Fine-grained PAT for private GitHub files.** `readGitHubFile(inputUrl, fetcher, pat?)` now attaches `Authorization: Bearer <pat>` only when a token is supplied, and only to `https://api.github.com/*`. The token lives in `chrome.storage.session`, is never written to `chrome.storage.local`, and is excluded from the context preview, the serialized request body and page text. Clearing it removes the session entry.
+2. **Stateless multi-turn follow-ups.** `buildOpenRouterConversationRequestBody(modelId, turns)` builds `[system, ...history, currentQuestion]`. History is component memory only; every turn resends the whole conversation, the 50,000-character cap applies to the whole body, and each send still needs a fresh confirmation. Committing an answer requires an explicit "保留这轮回答，准备追问" click, so the single-shot flow stays repeatable.
+
+| Gate | Fresh observation |
+| --- | --- |
+| `npm test` | 10 files / 76 tests passed. |
+| `npm run typecheck` | Exit 0. |
+| `npm run build` | Exit 0; chrome-mv3 JS 43.99 kB, CSS 1.97 kB. |
+| `npm run build:edge` | Exit 0; same sizes. |
+| Stub regression (Chrome 156.0.8078.80) | All 12 checks passed; 4 intercepted fakes; no unexpected external requests; no page errors. |
+
+The two new harness checks assert, in the browser rather than in unit tests, that a session PAT never reaches the preview or the request body, and that a follow-up resends `system + committed history + the new question` with the roles `["system", "user", "assistant", "user"]` while leaving history out of both storage areas.
+
+`--live-success` is a separate mode because the default keyless regression must keep asserting the 401 path:
+
+```powershell
+$env:ASTERTAB_LIVE_KEY = '<real key>'
+node tests/browser/diagnostic-openrouter.mjs --live-success --headed --playwright-core 'D:\tangyixiao.github.io\node_modules\playwright-core\index.mjs'
+```
+
+It refuses to run without `--headed`, reads the key from `ASTERTAB_LIVE_KEY` and the model from `ASTERTAB_LIVE_MODEL` (default `google/gemma-4-31b-it:free`), and **never invents a key**. It waits for a rendered `.diagnosis-result`, treats any alert other than the pending host-permission notice as failure, then asserts HTTP 200 with non-empty diagnosis text, `body.model` equal to the requested model, roles `["system", "user"]`, the key present only in the `Authorization` header, and the confirmation consumed. A 402 or 429 stops the run instead of being reported as success.
+
+**`--live-success` has not been executed with a real key yet**, so successful live inference remains unverified. The mode exists to make that run a single honest command rather than a manual claim.
