@@ -173,10 +173,21 @@ AI 输出是诊断和建议，不具有读取、联网、执行、提交或写�
 
 **仍未实现 / 未验证（如实标注，不夸大）：**
 
-- 真实 OpenRouter key 的**成功 live 推理**未验证：harness 用哨兵 key，只验证到真实端点返回 401（见 §10 第 1 项）。
-- GitHub **私有**仓库读取未实现（见 §10 第 2 项）。
-- §3 第 7 步「继续交互」的多轮对话 / 追问历史 / 追加来源后延续同一会话，属**后续增量，未纳入本次实现**（见 §3 第 7 步）。
-- 生产 Chrome/Edge 构建与浏览器验收均为验收记录中的历史观察；本定稿未重跑 `build` / `build:edge`（会写共享 `.wxt`，由 lead 统一跑）。
+更新于 2026-11-06：下列第 2、3 项已随后续增量落地，第 1 项仍未验证。原条目保留在下，供追溯。
+
+> Historical list (2026-11-04):
+>
+> - 真实 OpenRouter key 的**成功 live 推理**未验证：harness 用哨兵 key，只验证到真实端点返回 401（见 §10 第 1 项）。
+> - GitHub **私有**仓库读取未实现（见 §10 第 2 项）。
+> - §3 第 7 步「继续交互」的多轮对话 / 追问历史 / 追加来源后延续同一会话，属**后续增量，未纳入本次实现**（见 §3 第 7 步）。
+> - 生产 Chrome/Edge 构建与浏览器验收均为验收记录中的历史观察；本定稿未重跑 `build` / `build:edge`（会写共享 `.wxt`，由 lead 统一跑）。
+
+当前状态（2026-11-06）：
+
+- 真实 OpenRouter key 的**成功 live 推理仍未验证**。浏览器验收已加入 `--expect-200` 显式成功路径：缺 `OPENROUTER_LIVE_KEY` 或缺 `--model` 时退出码 1、绝不回退到哨兵 key，运行时断言真实 HTTP 200 且诊断文本非空。该路径**尚未用真实 key 执行**，故本项保持未验证；哨兵 key 的 401 结论不变。见 [验收记录](../../testing/diagnostic-local-context-acceptance.md)「The `--expect-200` success path」。
+- GitHub **私有**仓库读取**已实现**，方式为「用户自备只读细粒度 PAT」，而非本文 §4 曾设想的 GitHub App + PKCE + OAuth：PAT 仅存 `browser.storage.session`，只对 `https://api.github.com/*` 附加 `Authorization: Bearer`，不进入 URL、预览正文、AI 请求体或日志；URL 仍限 `blob/<40-hex SHA>/<path>`；未新增 host 权限、未引入 App/OAuth/刷新/持久化。本文 §4 与 §9 第 5 项描述的 App + PKCE + scope 收敛方案**未被采用**，其安全门槛要求仍适用于未来若要升级为 OAuth 的场合。见 [增量设计 spec](2026-11-05-astertab-v1-increments-design.md) §2。
+- §3 第 7 步「继续交互」的**多轮对话已实现**（无状态全量重发）：每轮 = 1 条 system + 全部历史 + 本轮追问，整体仍受 50,000 字符上限；历史仅存组件内存、不落盘、不同步；每轮须重新审阅完整序列化正文并重新勾选确认。ADR-0002 决策 7 的「无对话历史」限制由[该 ADR 的 2026-11-05 补记](../../decisions/ADR-0002-openrouter-diagnostic-integration.md)解除。**仍未纳入**的是「追加来源后延续同一会话」——新增或变更来源仍会使预览与旧确认失效，需重新审阅后再发。
+- 生产 Chrome/Edge 构建与浏览器回归已在合并后的 `main` 上重跑：`npm test` 10 files / 76 tests 通过，`typecheck` / `build` / `build:edge` 均退出 0，stubbed 浏览器验收 12 项全通过。
 
 ## 12. 参考资料
 

@@ -135,3 +135,18 @@
 - **Cross-links.** [Acceptance record](../../testing/diagnostic-local-context-acceptance.md), [ADR-0002 OpenRouter integration](../../decisions/ADR-0002-openrouter-diagnostic-integration.md), [Learning diagnostic workflow design spec](../specs/2026-09-25-astertab-learning-diagnostic-workflow-design.md), [Command foundation plan (sibling supplement)](2026-09-23-astertab-command-foundation.md). All four paths resolve relative to this plan's own directory (`docs/superpowers/plans/`).
 
 > 2026-11-04: current-status supplement appended; original plan text preserved verbatim.
+
+## Status update (2026-11-06)
+
+> Appended to the 2026-11-04 supplement above. The 2026-09-27 body and the 2026-11-04 note are both preserved verbatim; this section only corrects the "still unimplemented" list, which has since moved.
+
+Two of the three items the previous supplement listed as unimplemented have since landed:
+
+- **GitHub private-repository access is now built**, via a user-supplied fine-grained PAT stored only in `browser.storage.session`. The token is attached as `Authorization: Bearer` to `https://api.github.com/*` reads and nothing else: it never enters the URL, the diagnostic preview, the serialized AI request body, or any log. The URL boundary is unchanged — still only `blob/<40-hex SHA>/<path>` permanent links — and no new host permission, GitHub App, OAuth flow, refresh, or persistence was added. See [the V1 increments design spec](../specs/2026-11-05-astertab-v1-increments-design.md) §2.
+- **Multi-turn diagnostic interaction is now built** as a stateless resend: each round sends one system message plus the full in-memory history plus the new follow-up, and the whole body still counts against the 50,000-character context cap. History stays in component memory only — never written to `storage.local`, `storage.session`, or any sync path — and every round requires a fresh review of the complete serialized body and a fresh confirmation. [ADR-0002's 2026-11-05 addendum](../../decisions/ADR-0002-openrouter-diagnostic-integration.md) lifts decision 7's "no conversation history" restriction; the other eight decisions remain in force.
+
+Unchanged and still unverified:
+
+- **A successful live inference with a real API key has still not been demonstrated.** The browser harness now has an explicit `--expect-200` path that refuses to run without `OPENROUTER_LIVE_KEY` and `--model` (exit code 1 rather than silently falling back to the disposable sentinel key), and it asserts a real HTTP 200 with non-empty diagnosis text. That path has **not yet been executed with a real key**, so the honest status is still "unverified". The recorded 401 observation against the real endpoint is unaffected.
+
+The lines above that describe private GitHub access and AI sending as "later decisions" or "separate increments" remain the plan's original 2026-09-27 wording and are still not edited here.
