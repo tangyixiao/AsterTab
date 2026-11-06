@@ -166,3 +166,37 @@ node tests/browser/diagnostic-openrouter.mjs --expect-200 --model google/gemma-4
 ```
 
 **`--expect-200` has not been run with a real key yet**, so successful live inference remains unverified. The default stub path is unchanged and still passes all 12 checks on Chrome 156.0.8078.80; the disposable-key 401 live path is likewise unchanged.
+
+## Private GitHub files and multi-turn follow-ups
+
+Date: 2026-11-06 (Asia/Shanghai). Two increments landed after the sections above, and the re-verification below was run on the merged `main` rather than on a feature branch.
+
+### Private GitHub files via a fine-grained PAT
+
+The reader previously sent every GitHub request with `credentials: "omit"` and no `Authorization` header, so a private file could only ever fail. `readGitHubFile(url, fetcher, pat?)` now attaches `Authorization: Bearer <pat>` when the user has saved a token, and only to `https://api.github.com/*`. The token lives in `browser.storage.session`, is validation-checked on save (non-empty, ≤ 500 characters, no whitespace), and is removed by an explicit clear action.
+
+What the stub regression asserts: after saving a disposable fake PAT, `chrome.storage.session` contains exactly the API key and the PAT, `chrome.storage.local` still contains only the model ID, and neither `#diagnostic-preview` nor `#openrouter-request-preview` contains the token text. Clearing the PAT leaves only the API key behind. The URL boundary is unchanged: branch and tag URLs are still rejected before any request, and only `blob/<40-hex SHA>/<path>` links are read.
+
+Deliberately **not** implemented: GitHub App authorization, OAuth, PKCE, token refresh, and any persistence beyond the browser session. The V1 decision was a user-supplied read-only PAT precisely to avoid those subsystems.
+
+### Multi-turn follow-ups
+
+`OpenRouterRequestBody.messages` is no longer a fixed `[system, user]` pair. `buildOpenRouterConversationRequestBody(modelId, turns)` builds one system message plus the full conversation, and validates that the turns are non-empty, alternate user/assistant, start with `user`, end with `user`, and that the system prompt plus all turn content stays within the 50,000-character cap.
+
+What the stub regression asserts: after a first diagnosis, entering a follow-up and confirming sends a body whose `messages` are `[system, user, assistant, user]`, where the third entry carries the first answer and the fourth the new question. The history lives in component memory only — the assertions confirm `chrome.storage.local` still holds only the model ID — and the key stays in the header on the follow-up too. A second round then returns 401 and the UI keeps the committed history, hides the raw provider error, renders no result, and does not retry. "Start a new diagnosis" clears the history so the next send is a two-message request again.
+
+[ADR-0002 decision 7](../decisions/ADR-0002-openrouter-diagnostic-integration.md) listed "no conversation history" as a deliberate restriction; its 2026-11-05 addendum lifts that one restriction and leaves the other eight decisions intact. Adding or changing a source mid-conversation still invalidates the preview and the confirmation — continuing a session with new sources is explicitly out of scope for this increment.
+
+### Re-verification on merged `main` (`1b5b407`)
+
+| Gate | Result |
+| --- | --- |
+| `npm test` | 10 files / 76 tests passed |
+| `npm run typecheck` | exit 0 |
+| `npm run build` | exit 0, Chrome MV3 |
+| `npm run build:edge` | exit 0, Edge MV3 |
+| Stub browser regression | Chrome 156.0.4314.58, all 12 checks passed, 4 intercepted fakes, no unexpected external requests, no page errors |
+| Production manifest | `permissions: ["storage"]` plus the same three optional host permissions; no new host was added for either increment |
+| Secret scan / `git diff --check` | clean |
+
+**Successful live inference with a real API key is still unverified.** Everything in this section except the `--expect-200` run is proven by the stub regression and the four gates; the live 200 path remains blocked on obtaining a real key.
