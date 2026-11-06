@@ -810,14 +810,20 @@ When two design options conflict, prefer in this order:
 
 # 29. Current Product State
 
-The first slice and the learning-diagnostic increment are **implemented and accepted**. The deterministic Command Center (plain-text search and `g` / `gh` / `lg` commands parsed and routed to fixed HTTPS URLs without an LLM) and the single-shot learning diagnostic (Luogu statement, manually pasted submissions, and GitHub public files → one explicitly confirmed OpenRouter diagnosis) have both landed (PR #1 / #2) and passed acceptance.
+The first slice and the learning-diagnostic increment are **implemented and accepted**. The deterministic Command Center (plain-text search and `g` / `gh` / `lg` commands parsed and routed to fixed HTTPS URLs without an LLM) and the learning diagnostic have both landed (PR #1 / #2) and passed acceptance.
+
+Two follow-on increments have since landed on the same foundation (PR #17 / #18, with the `--expect-200` acceptance path in PR #20):
+
+- **Private GitHub files.** The user may paste a read-only fine-grained personal access token. It is kept in `browser.storage.session` only, is sent as a `Bearer` header exclusively to `https://api.github.com/*`, and never enters the URL, the preview, the request body, or any log. The accepted URL shape is unchanged (public or private, still a `blob/<40-hex SHA>/<path>` permalink). No GitHub App, OAuth, PKCE, or token refresh was built, and no new host permission was added.
+- **Multi-turn diagnosis.** A follow-up question resends the fixed system prompt plus the whole in-memory conversation plus the new question. History exists only in component memory, never in storage. Every send still requires a fresh explicit confirmation against the full serialized body, and the 50,000-character limit applies to the body as a whole. There is no permanent chat window, no auto-scroll, and no background polling.
 
 Verified baseline on the merged tree:
 
-- `npm test`: 9 files / 65 tests passed.
+- `npm test`: 10 files / 76 tests passed.
 - `npm run typecheck`: exit 0.
 - `npm run build` and `npm run build:edge`: exit 0 (Chrome / Edge Manifest V3 production builds).
-- Production Manifest: the only required permission is `storage`; other hosts remain optional.
+- Browser acceptance with all network calls stubbed: 12 checks passed, including the PAT-never-leaves-session and multi-turn-resend assertions.
+- Production Manifest: the only required permission is `storage`; the same three optional host permissions as before; no host was added by either increment.
 
 Records and sources: [command-center-first-slice-acceptance.md](docs/testing/command-center-first-slice-acceptance.md), [diagnostic-local-context-acceptance.md](docs/testing/diagnostic-local-context-acceptance.md), [ADR-0002-openrouter-diagnostic-integration.md](docs/decisions/ADR-0002-openrouter-diagnostic-integration.md), [package.json](package.json), [wxt.config.ts](wxt.config.ts).
 
@@ -837,11 +843,11 @@ The following stack and integration choices are **already implemented facts**, n
 
 The guardrail "Do not assume implementation choices have already been made" now applies **only to the areas below, which are still unimplemented or unverified**. Do not treat any of them as decided or shipped:
 
-1. Multi-turn diagnostic interaction (only a single confirmed diagnosis exists).
-2. GitHub private-repository access (only public files at 40-hex commit SHA URLs are read).
-3. A second AI Provider (only the fixed OpenRouter path is wired; no provider registry exists).
-4. A sync backend (no cloud sync; settings stay local or session-scoped).
-5. Successful live inference verified with a real API key (the live run used a disposable sentinel key, reached the real endpoint, and saw HTTP 401; no real key or successful end-to-end result was used).
+1. A second AI Provider (only the fixed OpenRouter path is wired; no provider registry exists).
+2. A sync backend (no cloud sync; settings stay local or session-scoped).
+3. Successful live inference verified with a real API key. The `--expect-200` acceptance path exists and asserts a real HTTP 200 with non-empty diagnosis text, but it has **never been run with a real key**: the only live run so far used a disposable sentinel key, reached the real endpoint, and saw HTTP 401.
+
+Two items that appeared on this list earlier are now shipped and are no longer guardrailed: multi-turn diagnostic interaction / follow-up questions, and GitHub private-repository access. Both are described above and their boundaries are recorded in the acceptance document.
 
 For these areas, derive a concrete technical plan from this product brief before major implementation, and do not assume the implementation choices have already been made.
 
