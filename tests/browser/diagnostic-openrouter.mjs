@@ -10,15 +10,26 @@ import { pathToFileURL } from "node:url";
 
 const args = process.argv.slice(2);
 if (args.includes("--help")) {
-  console.log("Usage: node tests/browser/diagnostic-openrouter.mjs [--live] [--headed] [--playwright-core PATH_TO_INDEX_MJS] [--browser PATH_TO_BROWSER_EXE] [--build PATH_TO_PRODUCTION_BUILD] [--output ARTIFACT_DIRECTORY]\nDefault mode intercepts every external request and uses a fake API key. --live lets openrouter.ai requests reach the real network; the first send raises the native host-permission prompt which must be approved by a human, so combine with --headed and a disposable real API key (expected result on an invalid key: a 401 alert). --headed keeps the browser visible and leaves it open after checks.");
+  console.log("Usage: node tests/browser/diagnostic-openrouter.mjs [--live] [--expect-200] [--model MODEL_ID] [--headed] [--playwright-core PATH_TO_INDEX_MJS] [--browser PATH_TO_BROWSER_EXE] [--build PATH_TO_PRODUCTION_BUILD] [--output ARTIFACT_DIRECTORY]\nDefault mode intercepts every external request and uses a fake API key. --live lets openrouter.ai requests reach the real network; the first send raises the native host-permission prompt which must be approved by a human, so combine with --headed and a disposable real API key (expected result on an invalid key: a 401 alert). --expect-200 implies --live and asserts a REAL successful inference: it requires the OPENROUTER_LIVE_KEY environment variable holding a real key (read once into memory, never logged, never written to any file by this script) and --model naming a model the account can actually serve, e.g. a :free variant. --headed keeps the browser visible and leaves it open after checks.");
   process.exit(0);
 }
-const liveMode = args.includes("--live");
-const headed = args.includes("--headed");
+const expect200 = args.includes("--expect-200");
+const liveKey = (process.env.OPENROUTER_LIVE_KEY ?? "").trim();
+if (expect200 && !liveKey) {
+  console.error("--expect-200 needs the OPENROUTER_LIVE_KEY environment variable to hold a real OpenRouter key. The script never prints, stores, or transmits it except inside the Authorization header.");
+  process.exit(1);
+}
 function argument(name, fallback) {
   const index = args.indexOf(name);
   return index < 0 ? fallback : args[index + 1];
 }
+const modelArgument = argument("--model");
+if (expect200 && !(modelArgument ?? "").trim()) {
+  console.error("--expect-200 needs --model with a concrete model ID the account can serve (for example a :free variant; check https://openrouter.ai/models).");
+  process.exit(1);
+}
+const liveMode = args.includes("--live") || expect200;
+const headed = args.includes("--headed");
 const playwrightPath = argument("--playwright-core");
 const { chromium } = await import(playwrightPath ? pathToFileURL(resolve(playwrightPath)).href : "playwright-core");
 const executablePath = argument("--browser", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe");
@@ -26,7 +37,8 @@ const extensionPath = resolve(argument("--build", ".output/edge-mv3"));
 const output = argument("--output");
 const endpoint = "https://openrouter.ai/api/v1/chat/completions";
 const fakeKey = "sk-or-browser-test-only";
-const model = "test/diagnostic-model";
+const model = expect200 ? modelArgument.trim() : "test/diagnostic-model";
+const runKey = expect200 ? liveKey : fakeKey;
 const requests = [];
 const unexpectedRequests = [];
 const errors = [];
@@ -110,13 +122,13 @@ try {
   await page.locator("#openrouter-model").fill(model);
   await button("保存模型").click();
   await page.getByRole("status").filter({ hasText: "模型 ID 已保存" }).waitFor();
-  await page.locator("#openrouter-api-key").fill(fakeKey);
+  await page.locator("#openrouter-api-key").fill(runKey);
   await openrouterSection().getByRole("button", { name: "保存到当前会话" }).click();
   await page.getByRole("status").filter({ hasText: "API key 仅保存" }).waitFor();
   assert.equal(await page.locator("#openrouter-api-key").inputValue(), "");
   const stored = await page.evaluate(async () => ({ local: await chrome.storage.local.get(null), session: await chrome.storage.session.get(null) }));
   assert.deepEqual(stored.local, { openrouterModelId: model });
-  assert.deepEqual(stored.session, { openrouterApiKey: fakeKey });
+  assert.deepEqual(stored.session, { openrouterApiKey: runKey });
   assert.equal(requests.length, 0);
   if (!liveMode) assert.equal(await page.evaluate(() => window.permissionCalls.length), 0);
   checks.push("saving uses real local/session storage and makes no request or permission call");
@@ -139,7 +151,7 @@ try {
   assert.ok(preview.includes("WA on test 3"));
   assert.ok(preview.includes("int main()"));
   assert.ok(!preview.includes("second submission evidence"));
-  assert.ok(!preview.includes(fakeKey));
+  assert.ok(!preview.includes(runKey));
   checks.push("repeatable sources, exclusion and inert pasted text reach the exact preview without a key");
 
   await confirm();
@@ -179,6 +191,7 @@ try {
     // real permissions.request.
     if (!headed) throw new Error("--live needs --headed: the native host-permission prompt must be approved by a human.");
     await confirm();
+    const sentPreview = await page.locator("#openrouter-request-preview").textContent();
     await send().click();
     console.log("ACTION NEEDED: approve the native OpenRouter host permission prompt in the browser window (Ctrl+C aborts).");
     await page.waitForFunction(
@@ -186,27 +199,45 @@ try {
       undefined, { polling: 500, timeout: 300_000 },
     );
     checks.push("a native host permission prompt was approved by a human and persisted for this profile");
-    // The SAME confirmed request resumed after the grant and hit the real
-    // endpoint. With a disposable invalid key OpenRouter answers 401, which
-    // the UI must show as an alert while preserving sources and hiding the
-    // raw provider detail.
-    await page.getByRole("alert").filter({ hasText: "401" }).waitFor({ timeout: 300_000 });
-    assert.equal(requests.length, 1);
-    assert.ok(requests[0].body.includes("WA on test 3"));
-    assert.equal(requests[0].headers.authorization, `Bearer ${fakeKey}`);
-    assert.ok(!(await page.locator("body").textContent()).includes("private provider detail"));
-    assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("WA on test 3"));
-    assert.equal(await page.locator(".diagnosis-result").count(), 0);
-    assert.equal(await consent().isChecked(), false);
-    checks.push("real 401 from OpenRouter: preview body sent, source input preserved, provider detail hidden, no retry");
+    if (expect200) {
+      // The SAME confirmed request resumed after the grant and hit the real
+      // endpoint. The UI renders .diagnosis-result only when the adapter saw
+      // HTTP 200, no error envelope, finish_reason !== "error" and non-empty
+      // assistant text; every other outcome throws into an alert instead.
+      await page.locator(".diagnosis-result").waitFor({ timeout: 300_000 });
+      const diagnosisText = ((await page.locator(".diagnosis-result").textContent()) ?? "").trim();
+      assert.ok(diagnosisText.length > 0, "diagnosis text must be non-empty");
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].body, sentPreview);
+      assert.equal(requests[0].headers.authorization, `Bearer ${runKey}`);
+      assert.ok(!requests[0].body.includes(runKey), "the key must never appear in the request body");
+      assert.equal(await page.getByRole("alert").count(), 0);
+      assert.equal(await consent().isChecked(), false);
+      assert.ok(!(await page.locator("body").textContent()).includes(runKey));
+      checks.push(`real 200 from OpenRouter: model ${model} returned a non-empty diagnosis rendered as text; key kept out of the page, preview and body; body sent equals preview; confirmation consumed`);
+    } else {
+      // The SAME confirmed request resumed after the grant and hit the real
+      // endpoint. With a disposable invalid key OpenRouter answers 401, which
+      // the UI must show as an alert while preserving sources and hiding the
+      // raw provider detail.
+      await page.getByRole("alert").filter({ hasText: "401" }).waitFor({ timeout: 300_000 });
+      assert.equal(requests.length, 1);
+      assert.ok(requests[0].body.includes("WA on test 3"));
+      assert.equal(requests[0].headers.authorization, `Bearer ${runKey}`);
+      assert.ok(!(await page.locator("body").textContent()).includes("private provider detail"));
+      assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("WA on test 3"));
+      assert.equal(await page.locator(".diagnosis-result").count(), 0);
+      assert.equal(await consent().isChecked(), false);
+      checks.push("real 401 from OpenRouter: preview body sent, source input preserved, provider detail hidden, no retry");
 
-    // Second live send: the grant is persisted, so no prompt appears and the
-    // request reaches the real endpoint again without human action.
-    await confirm();
-    await send().click();
-    await page.getByRole("alert").filter({ hasText: "401" }).waitFor();
-    assert.equal(requests.length, 2);
-    checks.push("persisted grant skips the prompt; a second send reaches the real endpoint again");
+      // Second live send: the grant is persisted, so no prompt appears and the
+      // request reaches the real endpoint again without human action.
+      await confirm();
+      await send().click();
+      await page.getByRole("alert").filter({ hasText: "401" }).waitFor();
+      assert.equal(requests.length, 2);
+      checks.push("persisted grant skips the prompt; a second send reaches the real endpoint again");
+    }
   }
 
   if (!liveMode) {
@@ -217,7 +248,7 @@ try {
     await page.locator(".diagnosis-result").waitFor();
     assert.equal(requests.length, 1);
     assert.equal(requests[0].body, sentPreview);
-    assert.equal(requests[0].headers.authorization, `Bearer ${fakeKey}`);
+    assert.equal(requests[0].headers.authorization, `Bearer ${runKey}`);
     assert.equal(await page.evaluate(() => window.diagnosticExecuted), undefined);
     assert.equal(await consent().isChecked(), false);
     const permissions = await page.evaluate(() => window.permissionCalls);
@@ -297,12 +328,12 @@ try {
   await openDraft("offline diagnostic");
   assert.ok((await page.locator("#diagnostic-preview").textContent()).includes("offline diagnostic"));
   assert.equal(await send().isEnabled(), false);
-  assert.equal(requests.length, liveMode ? 2 : 4);
+  assert.equal(requests.length, expect200 ? 1 : liveMode ? 2 : 4);
   checks.push("offline reload preserves the command entry and local diagnostic editing without an AI call");
 
   assert.deepEqual(unexpectedRequests, []);
   assert.deepEqual(errors, []);
-  const result = { browser: await browser.version(), build: extensionPath, mode: liveMode ? "live" : "stubbed", checks, apiRequests: liveMode ? "sent to the real https://openrouter.ai/api/v1/chat/completions" : `${requests.length} intercepted fakes`, unexpectedExternalRequests: unexpectedRequests, pageErrors: errors, permissionBoundary: liveMode ? "native prompt approved by a human" : "stubbed; no native host grant or live API verified" };
+  const result = { browser: await browser.version(), build: extensionPath, mode: expect200 ? "live-expect-200" : liveMode ? "live" : "stubbed", ...(expect200 ? { model } : {}), checks, apiRequests: liveMode ? "sent to the real https://openrouter.ai/api/v1/chat/completions" : `${requests.length} intercepted fakes`, unexpectedExternalRequests: unexpectedRequests, pageErrors: errors, permissionBoundary: liveMode ? "native prompt approved by a human" : "stubbed; no native host grant or live API verified" };
   if (output) {
     await mkdir(resolve(output), { recursive: true });
     await writeFile(resolve(output, "diagnostic-openrouter.json"), JSON.stringify(result, null, 2));
