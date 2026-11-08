@@ -8,7 +8,7 @@ AsterTab 是一个以命令为中心的浏览器新标签页工作区（Chrome /
 
 ## 当前状态（V1）
 
-- **确定性 Command Center 第一切片**：普通文本与 `g` / `gh` / `lg` 命令经纯 TypeScript 解析、构造固定 HTTPS URL 后直接跳转，不经过 LLM。首屏只加载打包的 HTML / JS / CSS，无外部请求，离线可用。
+- **确定性 Command Center 第一切片**：普通文本与 `g` / `gh` / `lg` / `cf` 命令经纯 TypeScript 解析、构造固定 HTTPS URL 后直接跳转，不经过 LLM。`= <表达式>`（别名 `calc`）在本地计算数学表达式（手写解析器，不用 `eval`、不联网），`help` / `?` 显示内联命令参考。首屏只加载打包的 HTML / JS / CSS，无外部请求，离线可用。
 - **学习诊断工作流**：显式 `ai <request>` 打开一个本地、逐项可勾选的诊断草稿，汇集洛谷题面、手动粘贴的提交记录、GitHub 公开文件（限 40-hex commit SHA 的 URL），拼出精确预览后由 OpenRouter 做**单次**诊断。读取 / 发送前会按需申请对应 host 权限。
 - **Agent 仅显式 `ai` 触发**：普通搜索、跳转、命令执行都不走 AI；首屏与草稿打开时不联网、不发送。
 - **默认不给完整题解**：先判断卡在题意理解、建模、算法、复杂度、实现、调试还是提交反馈的哪一步，再按需给出反问、最小提示或方向；完整题解仅在用户明确要求时出现。
@@ -24,6 +24,9 @@ AsterTab 是一个以命令为中心的浏览器新标签页工作区（Chrome /
 | `g <query>` | Google 网页搜索 | `https://www.google.com/search?q=<query>` |
 | `gh <query>` | GitHub 仓库搜索 | `https://github.com/search?q=<query>&type=repositories` |
 | `lg <query>` | 洛谷题目搜索 | `https://www.luogu.com.cn/problem/list?keyword=<query>&page=1` |
+| `cf <题号或用户名>` | Codeforces 题目页（如 `cf 1234A`、`cf 1234/A`）或用户主页（如 `cf tourist`） | `https://codeforces.com/problemset/problem/<contest>/<index>` 或 `https://codeforces.com/profile/<handle>` |
+| `= <表达式>` | 本地计算数学表达式（如 `= 2^10`），结果显示在状态行，不跳转 | 无（本地求值） |
+| `help` 或 `?` | 显示内联命令参考 | 无（本地渲染） |
 | `ai <request>` | 打开学习诊断草稿（**不联网首屏**，不发送） | 无（本地草稿与预览） |
 
 `ai` 草稿中的资料读取、勾选与请求体预览都在本地完成；只有用户确认发送时才向 OpenRouter 发起一次请求。
