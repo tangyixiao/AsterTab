@@ -10,6 +10,7 @@ export type ParsedCommand =
   | { kind: "empty" }
   | SearchCommand
   | { kind: "agent"; request: string }
+  | { kind: "help" }
   | { kind: "calc"; expression: string }
   | { kind: "error"; code: "missing_query"; command: "g" | "gh" | "lg" | "cf" }
   | { kind: "error"; code: "missing_agent_request"; command: "ai" }
@@ -25,6 +26,9 @@ export function parseCommand(input: string): ParsedCommand {
   const [, rawToken, rawRest = ""] = /^([^\s]+)(?:\s+([\s\S]*))?$/.exec(trimmed)!;
   const token = rawToken!.toLowerCase();
   const query = rawRest.trim();
+  if ((token === "help" || token === "?") && !query) {
+    return { kind: "help" };
+  }
   if (token === "ai") {
     return query ? { kind: "agent", request: query } : { kind: "error", code: "missing_agent_request", command: "ai" };
   }
