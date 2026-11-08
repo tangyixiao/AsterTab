@@ -39,6 +39,19 @@ describe("buildSearchUrl", () => {
     expect(url.href).toBe(href);
   });
 
+  it("routes a Luogu problem id to the problem page", () => {
+    const url = buildSearchUrl({ kind: "search", target: "luogu", query: "P1001" });
+    expect(url).toBeInstanceOf(URL);
+    expect(url.href).toBe("https://www.luogu.com.cn/problem/P1001");
+  });
+
+  it("keeps the Luogu list URL for keyword queries", () => {
+    const url = buildSearchUrl({ kind: "search", target: "luogu", query: "动态规划" });
+    expect(url.pathname).toBe("/problem/list");
+    expect(url.searchParams.get("keyword")).toBe("动态规划");
+    expect(url.searchParams.get("page")).toBe("1");
+  });
+
   it.each(["javascript:alert(1)", "data:text/html,hello"])("treats %s as search data", query => {
     const url = buildSearchUrl({ kind: "search", target: "default", query });
     expect(url.origin).toBe("https://www.bing.com");
