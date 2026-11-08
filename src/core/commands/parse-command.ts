@@ -1,4 +1,4 @@
-export type SearchTarget = "default" | "google" | "github" | "luogu";
+export type SearchTarget = "default" | "google" | "github" | "luogu" | "codeforces";
 
 export type SearchCommand = {
   kind: "search";
@@ -10,7 +10,7 @@ export type ParsedCommand =
   | { kind: "empty" }
   | SearchCommand
   | { kind: "agent"; request: string }
-  | { kind: "error"; code: "missing_query"; command: "g" | "gh" | "lg" }
+  | { kind: "error"; code: "missing_query"; command: "g" | "gh" | "lg" | "cf" }
   | { kind: "error"; code: "missing_agent_request"; command: "ai" };
 
 export function parseCommand(input: string): ParsedCommand {
@@ -22,9 +22,9 @@ export function parseCommand(input: string): ParsedCommand {
   if (token === "ai") {
     return query ? { kind: "agent", request: query } : { kind: "error", code: "missing_agent_request", command: "ai" };
   }
-  const target: SearchTarget | undefined = token === "g" ? "google" : token === "gh" ? "github" : token === "lg" ? "luogu" : undefined;
+  const target: SearchTarget | undefined = token === "g" ? "google" : token === "gh" ? "github" : token === "lg" ? "luogu" : token === "cf" ? "codeforces" : undefined;
   if (target) {
-    return query ? { kind: "search", target, query } : { kind: "error", code: "missing_query", command: token as "g" | "gh" | "lg" };
+    return query ? { kind: "search", target, query } : { kind: "error", code: "missing_query", command: token as "g" | "gh" | "lg" | "cf" };
   }
   return { kind: "search", target: "default", query: trimmed };
 }

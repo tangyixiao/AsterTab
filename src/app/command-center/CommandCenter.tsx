@@ -41,7 +41,7 @@ export function CommandCenter({ onNavigate }: CommandCenterProps): JSX.Element {
         <input id="command-input" value={input} onInput={event => { setInput(event.currentTarget.value); setStatus(""); }} autoFocus />
         <button type="submit">搜索</button>
       </form>
-      <p>g / gh / lg / ai</p>
+      <p>g / gh / lg / cf / ai</p>
       <p role="status">{status}</p>
     </main>
   );

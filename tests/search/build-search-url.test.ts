@@ -29,6 +29,16 @@ describe("buildSearchUrl", () => {
     expect(github.searchParams.get("type")).toBe("repositories");
   });
 
+  it.each([
+    ["1234A", "https://codeforces.com/problemset/problem/1234/A"],
+    ["tourist", "https://codeforces.com/profile/tourist"],
+    ["chen jason", "https://codeforces.com/profile/chen%20jason"],
+  ] as const)("builds %s Codeforces URLs", (query, href) => {
+    const url = buildSearchUrl({ kind: "search", target: "codeforces", query });
+    expect(url).toBeInstanceOf(URL);
+    expect(url.href).toBe(href);
+  });
+
   it.each(["javascript:alert(1)", "data:text/html,hello"])("treats %s as search data", query => {
     const url = buildSearchUrl({ kind: "search", target: "default", query });
     expect(url.origin).toBe("https://www.bing.com");

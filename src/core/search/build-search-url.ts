@@ -1,4 +1,5 @@
 import type { SearchCommand } from "../commands/parse-command";
+import { parseCodeforcesQuery } from "./codeforces-query";
 
 export function buildSearchUrl(command: SearchCommand): URL {
   if (!command.query.trim()) throw new RangeError("Search query is empty");
@@ -22,5 +23,12 @@ export function buildSearchUrl(command: SearchCommand): URL {
       url.searchParams.set("keyword", command.query);
       url.searchParams.set("page", "1");
       return url;
+    case "codeforces": {
+      const cf = parseCodeforcesQuery(command.query);
+      url = cf.kind === "problem"
+        ? new URL(`https://codeforces.com/problemset/problem/${cf.contest}/${cf.index}`)
+        : new URL(`https://codeforces.com/profile/${encodeURIComponent(cf.handle)}`);
+      return url;
+    }
   }
 }
