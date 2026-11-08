@@ -1,5 +1,6 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
+import { evaluateExpression } from "../../core/commands/calc";
 import { parseCommand } from "../../core/commands/parse-command";
 import { buildSearchUrl } from "../../core/search/build-search-url";
 import { DiagnosticDraft } from "../diagnostic/DiagnosticDraft";
@@ -31,8 +32,13 @@ export function CommandCenter({ onNavigate }: CommandCenterProps): JSX.Element {
           setAgentRequest(result.request);
           return;
         }
+        if (result.kind === "calc") {
+          const outcome = evaluateExpression(result.expression);
+          setStatus(outcome.kind === "ok" ? `${result.expression} = ${outcome.display}` : outcome.message);
+          return;
+        }
         if (result.kind === "error") {
-          setStatus(result.code === "missing_query" ? "请输入搜索内容。" : "请输入 AI 请求内容。");
+          setStatus(result.code === "missing_query" ? "请输入搜索内容。" : result.code === "missing_expression" ? "请输入要计算的表达式。" : "请输入 AI 请求内容。");
           return;
         }
         setStatus("");
@@ -41,7 +47,7 @@ export function CommandCenter({ onNavigate }: CommandCenterProps): JSX.Element {
         <input id="command-input" value={input} onInput={event => { setInput(event.currentTarget.value); setStatus(""); }} autoFocus />
         <button type="submit">搜索</button>
       </form>
-      <p>g / gh / lg / cf / ai</p>
+      <p>g / gh / lg / cf / ai / =</p>
       <p role="status">{status}</p>
     </main>
   );
