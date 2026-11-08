@@ -23,7 +23,7 @@ AsterTab 是一个以命令为中心的浏览器新标签页工作区（Chrome /
 | 普通文本，如 `hello world` | Bing 网页搜索 | `https://www.bing.com/search?q=<query>` |
 | `g <query>` | Google 网页搜索 | `https://www.google.com/search?q=<query>` |
 | `gh <query>` | GitHub 仓库搜索 | `https://github.com/search?q=<query>&type=repositories` |
-| `lg <query>` | 洛谷题目搜索 | `https://www.luogu.com.cn/problem/list?keyword=<query>&page=1` |
+| `lg <题号或关键词>` | 洛谷题目页（如 `lg P1001`）或题目搜索 | `https://www.luogu.com.cn/problem/<pid>` 或 `https://www.luogu.com.cn/problem/list?keyword=<query>&page=1` |
 | `cf <题号或用户名>` | Codeforces 题目页（如 `cf 1234A`、`cf 1234/A`）或用户主页（如 `cf tourist`） | `https://codeforces.com/problemset/problem/<contest>/<index>` 或 `https://codeforces.com/profile/<handle>` |
 | `= <表达式>` | 本地计算数学表达式（如 `= 2^10`），结果显示在状态行，不跳转 | 无（本地求值） |
 | `help` 或 `?` | 显示内联命令参考 | 无（本地渲染） |
