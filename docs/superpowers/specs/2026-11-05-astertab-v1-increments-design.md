@@ -1,6 +1,6 @@
 # 设计：V1 三项增量（2026-11-05）
 
-> **状态：设计草案，待用户审核；不构成实现授权。**
+> **状态：设计草案，待 Tangyixiao 审核；不构成实现授权。**
 > 依据：用户 m00670「1 你自己给我临时邮箱免费申请一个key 2. 允许 3. 允许」+ m00742/m00744「用这个个啊」（改用已登录 OpenRouter 账号）+ m00790 四项架构取舍确认（全部按推荐）。
 > 本文件是 planning artifact，按 `brainstorming` 设计门与 AGENTS.md §29 在写任何实现代码前提交审阅。批准后才转入 implementation plan。
 
@@ -20,12 +20,12 @@
 
 **性质**：操作 + 测试资产增量，不改产品运行时逻辑。
 
-- 用户已授权使用其**自己已登录**的 OpenRouter 账号（窗口 `Activity | OpenRouter - Google Chrome`，账号 `Total spend $0.00 / Requests 0`）。该账号由用户本人创建并接受条款，绕开上述身份/合同问题。
-- **创建 key**：走 `wincu` 桌面 UIA/OCR 回退路径（该窗口 `browserLane.browsers` 为空，无 CDP 后台通道），点击左栏 `API keys` → 创建 → 复制。key 是外部服务写操作，用户已明确说「用这个」授权。
+- Tangyixiao 已授权使用其**自己已登录**的 OpenRouter 账号（窗口 `Activity | OpenRouter - Google Chrome`，账号 `Total spend $0.00 / Requests 0`）。该账号由 Tangyixiao 本人创建并接受条款，绕开上述身份/合同问题。
+- **创建 key**：走 `wincu` 桌面 UIA/OCR 回退路径（该窗口 `browserLane.browsers` 为空，无 CDP 后台通道），点击左栏 `API keys` → 创建 → 复制。key 是外部服务写操作，Tangyixiao 已明确说「用这个」授权。
 - **key 生命周期**：只注入本地临时验证脚本 / 环境变量，**不写仓库、不提交、不入任何日志、不写 `storage.local`**。验证结束可从 OpenRouter 侧撤销。
 - **零成本模型**：选 `:free` 变体（如 `google/gemma-4-31b-it:free` 或 `liquid/lfm-2.5-2.6b:free`，prompt 价 0）。官方 limits 文档称累计购买 <$10 的账号有 50 次/日 `:free` 额度，但与 ToS §4.1 有张力 —— **必须实测真实 HTTP 200（含非空 `choices[0].message.content`）才算数，不靠假设**。
 - **测试资产**：在 `tests/browser/diagnostic-openrouter.mjs` 增加「期望 200」路径（与既有「期望 401」路径并列、由显式 flag 区分，默认仍跑无 key 的 401 路径），或独立探针脚本。断言点：HTTP 200、响应不是 error envelope、`finish_reason !== "error"`、诊断文本非空且被 UI 展示。
-- **失败分支（用户已确认 A）**：若 `$0` 账号的 `:free` 模型仍返回 HTTP 402（或任何非 200），**立即停下如实报告**「成功 live 未验证」，由用户决定充值 / 领积分 / 另给 key；不产生任何真实费用、不购买 $5 Credits。
+- **失败分支（Tangyixiao 已确认 A）**：若 `$0` 账号的 `:free` 模型仍返回 HTTP 402（或任何非 200），**立即停下如实报告**「成功 live 未验证」，由用户决定充值 / 领积分 / 另给 key；不产生任何真实费用、不购买 $5 Credits。
 - 不做：不把 key 写进 fixture、不让 CI 依赖真实账号、不改产品默认模型。
 
 ## 2. 增量②：GitHub 私有仓库（细粒度 PAT）
@@ -80,7 +80,7 @@
 | 3 | ADR-0002 变更 | A 追加日期补记，原决策逐字保留 |
 | 4 | $0 余额 402 | A 停下如实报告，不充值、不产生费用 |
 
-## 8. 待用户确认
+## 8. 待项目决策
 
 - 本设计整体是否批准？批准后我按 §5 分层从 `main`（`f758b85`）建干净基底，先做①（拿 200）、再②③，各自四门禁 + PR 合并。
 - 增量① 创建/撤销 API key 是在你自己的 OpenRouter 账号上的外部写操作，是否需要我在动手前再单独说一声？
