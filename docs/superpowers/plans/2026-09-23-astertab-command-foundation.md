@@ -23,7 +23,7 @@
 - 保持单仓库、单扩展应用；不为未来能力创建 capability/adapter/provider/context registry、通用 Executor、占位接口/文件或额外 package。
 - npm 顶层依赖用精确版本，`package.json` 不写 `^`/`~`；提交唯一 `package-lock.json` 锁定完整解析树。兼容性检查失败时不得自行换版本，先停下报告并修订本计划。
 - 每个任务只 stage 该任务列出的文件，并按任务给出的 message 建立独立 commit。不得用 `git add .`、`git add -A` 或顺手提交其他已有未跟踪文件。
-- 当前 `PROJECT.md`、`AGENTS.md` 和 `docs/` 均为用户已有的未跟踪内容；执行期间保护它们，不把本文档或其他已有文件顺手纳入 Task commit。
+- 当前 `PROJECT.md`、`AGENTS.md` 和 `docs/` 均为已有的未跟踪内容；执行期间保护它们，不把本文档或其他已有文件顺手纳入 Task commit。
 
 ## Review Focus
 

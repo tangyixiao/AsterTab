@@ -1,6 +1,6 @@
 # AsterTab 命令架构设计 Spec
 
-> **状态：Approved（2026-09-24，用户审核通过）。** 本文定义产品核心模块的职责、数据流和约束；批准 Spec 不代表批准 implementation plan 或授权开始实现。2026-11-04 仅做实现状态同步与勘误，未变更设计决策。
+> **状态：Approved（2026-09-24，审核通过）。** 本文定义产品核心模块的职责、数据流和约束；批准 Spec 不代表批准 implementation plan 或授权开始实现。2026-11-04 仅做实现状态同步与勘误，未变更设计决策。
 
 - 日期：2026-09-24（adversarial self-review 修订）
 - 范围：Command Center 确定性核心及其通往未来 Agent 工作流的边界
@@ -258,9 +258,9 @@ Agent / LLM / provider SDK；service worker；content script；浏览历史、�
 
 ## 12. 审批记录与下一阶段闸门
 
-本 Spec 于 2026-09-24 获用户审核通过，状态为 Approved。批准确认了普通文本确定性搜索、Agent 显式触发、AI 与 action 执行分离、权限分层，以及首切片仅包含确定性 Command Center 等边界。
+本 Spec 于 2026-09-24 获审核通过，状态为 Approved。批准确认了普通文本确定性搜索、Agent 显式触发、AI 与 action 执行分离、权限分层，以及首切片仅包含确定性 Command Center 等边界。
 
-本次 Spec 批准不等于 implementation plan 获批，也不授权开始实现。修订后的 implementation plan 仍待用户审核；开始 scaffold、安装依赖或编码前，必须另行收到用户明确授权。
+本次 Spec 批准不等于 implementation plan 获批，也不授权开始实现。修订后的 implementation plan 仍待 Tangyixiao 审核；开始 scaffold、安装依赖或编码前，必须另行收到用户明确授权。
 
 以下意见不阻塞本 Spec，但约束后续设计：
 
