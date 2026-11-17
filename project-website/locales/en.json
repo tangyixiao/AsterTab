@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "description": "A command-driven new tab for Chrome and Edge. Enter lg P1001 for a Luogu problem, cf 1234A for Codeforces or an expression to calculate locally."
+  },
+  "pages": {
+    "home": {
+      "title": "Open a problem from your new tab · {project}"
+    },
+    "features": {
+      "title": "Features · {project}",
+      "description": "A command-driven new tab for Chrome and Edge. Enter lg P1001 for a Luogu problem, cf 1234A for Codeforces or an expression to calculate locally."
+    },
+    "download": {
+      "title": "Get started · {project}",
+      "description": "Get the source and run npm ci. Use npm run build for Chrome or npm run build:edge for Edge."
+    },
+    "community": {
+      "title": "Community · {project}",
+      "description": "Find usage guidance, follow discussions and review changes to this project."
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "download": "Get started",
+    "community": "Community"
+  },
+  "ui": {
+    "skip_link": "Skip to main content",
+    "navigation": "Main navigation",
+    "open_navigation": "Open navigation",
+    "close_navigation": "Close navigation",
+    "language": "Choose language",
+    "theme": "Choose theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "platforms": "Supported platforms",
+    "github": "GitHub",
+    "view_image": "View full illustration",
+    "feature_more": "Explore features",
+    "download": "Read installation instructions",
+    "release_notes": "Source repository",
+    "documentation": "Documentation",
+    "source": "Source repository",
+    "illustration": "First steps",
+    "license": "Apache-2.0 (original code and docs)"
+  },
+  "hero": {
+    "title": [
+      "Open a problem from your new tab"
+    ],
+    "description": [
+      "A command-driven new tab for Chrome and Edge. Enter lg P1001 for a Luogu problem, cf 1234A for Codeforces or an expression to calculate locally."
+    ],
+    "primary_action": "Read installation instructions",
+    "secondary_action": "Explore features"
+  },
+  "preview": {
+    "caption": "First steps",
+    "tabs": [
+      {
+        "label": "Get started",
+        "icon": "book"
+      }
+    ],
+    "items": [
+      {
+        "title": "Build the extension",
+        "description": "Get the source and run npm ci. Use npm run build for Chrome or npm run build:edge for Edge.",
+        "icon": "book"
+      },
+      {
+        "title": "Load and try a command",
+        "description": "Load the matching .output directory as an unpacked extension, open a tab and enter lg P1001.",
+        "icon": "link"
+      }
+    ]
+  },
+  "features": {
+    "title": "Project features",
+    "groups": [
+      {
+        "title": "Problem and repository search",
+        "description": "Use lg, cf and gh to locate problems, contestants or repositories. Enter help to see the commands.",
+        "detail": "",
+        "icon": "layers"
+      },
+      {
+        "title": "Learning diagnostic drafts",
+        "description": "The ai command opens a local draft. Select sources and inspect the request body before confirming a send to OpenRouter.",
+        "detail": "",
+        "icon": "book"
+      }
+    ]
+  },
+  "getting_started": {
+    "title": "Get started · {project}",
+    "steps": [
+      {
+        "title": "Build the extension",
+        "description": "Get the source and run npm ci. Use npm run build for Chrome or npm run build:edge for Edge.",
+        "icon": "book"
+      },
+      {
+        "title": "Load and try a command",
+        "description": "Load the matching .output directory as an unpacked extension, open a tab and enter lg P1001.",
+        "icon": "link"
+      }
+    ]
+  },
+  "community": {
+    "title": "Community · {project}",
+    "description": "Find usage guidance, follow discussions and review changes to this project.",
+    "links": [
+      {
+        "label": "Help and feedback",
+        "description": "Browse existing reports or describe a reproducible problem.",
+        "icon": "book"
+      },
+      {
+        "label": "Source repository",
+        "description": "Find the project and its maintenance links.",
+        "icon": "link"
+      },
+      {
+        "label": "Review changes",
+        "description": "Review open pull requests or prepare a contribution.",
+        "icon": "code"
+      }
+    ]
+  },
+  "footer": {
+    "copyright": "{copyright}"
+  }
+}
