@@ -9,7 +9,9 @@ AsterTab 是一个以命令为中心的浏览器新标签页工作区（Chrome /
 ## 当前状态（V1）
 
 - **确定性 Command Center 第一切片**：普通文本与 `g` / `gh` / `lg` / `cf` 命令经纯 TypeScript 解析、构造固定 HTTPS URL 后直接跳转，不经过 LLM。`= <表达式>`（别名 `calc`）在本地计算数学表达式（手写解析器，不用 `eval`、不联网），`help` / `?` 显示内联命令参考。首屏只加载打包的 HTML / JS / CSS，无外部请求，离线可用。
-- **学习诊断工作流**：显式 `ai <request>` 打开一个本地、逐项可勾选的诊断草稿，汇集洛谷题面、手动粘贴的提交记录、GitHub 公开文件（限 40-hex commit SHA 的 URL），拼出精确预览后由 OpenRouter 做**单次**诊断。读取 / 发送前会按需申请对应 host 权限。
+- **学习诊断工作流**：显式 `ai <request>` 打开一个本地、逐项可勾选的诊断草稿，汇集洛谷题面、手动粘贴的提交记录、GitHub 文件（公开仓库无需凭据；私有仓库可在草稿内填入只读细粒度 PAT），拼出精确预览后由 OpenRouter 做诊断。读取 / 发送前会按需申请对应 host 权限。
+- **多轮追问**：首轮诊断之后可在同一草稿里继续追问。每轮都把系统提示、全部历史与本轮问题整体重发，历史只活在组件内存（关草稿即清空，不写入任何 storage），且每轮都必须重新勾选确认新的完整请求体。
+- **GitHub 私有文件**：用户自备只读细粒度 PAT，只存 `browser.storage.session`（浏览器关闭即失效），只作为 `Authorization: Bearer` 发给 `https://api.github.com/*`；不新增 host 权限、不建 GitHub App、不做 OAuth / PKCE / 令牌刷新。可读取的 URL 形态不变：仍是 `blob/<40-hex SHA>/<path>` 永久链接。
 - **Agent 仅显式 `ai` 触发**：普通搜索、跳转、命令执行都不走 AI；首屏与草稿打开时不联网、不发送。
 - **默认不给完整题解**：先判断卡在题意理解、建模、算法、复杂度、实现、调试还是提交反馈的哪一步，再按需给出反问、最小提示或方向；完整题解仅在用户明确要求时出现。
 - 当前实现不预建多 Provider runtime、不含 background service worker / content script，也不做自动重试或模型切换。

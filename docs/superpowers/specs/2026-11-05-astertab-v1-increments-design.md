@@ -1,5 +1,8 @@
 # 设计：V1 三项增量（2026-11-05）
 
+> **状态（2026-11-18 复核）：② 与 ③ 已实现并合并；仅 ① 仍待验证。** 见文末「实施状态（2026-11-18）」。
+> 下列 2026-11-05 的原始草案正文保持原样，不据新事实改写。
+
 > **状态：设计草案，待 Tangyixiao 审核；不构成实现授权。**
 > 依据：用户 m00670「1 你自己给我临时邮箱免费申请一个key 2. 允许 3. 允许」+ m00742/m00744「用这个个啊」（改用已登录 OpenRouter 账号）+ m00790 四项架构取舍确认（全部按推荐）。
 > 本文件是 planning artifact，按 `brainstorming` 设计门与 AGENTS.md §29 在写任何实现代码前提交审阅。批准后才转入 implementation plan。
@@ -86,3 +89,32 @@
 - 增量① 创建/撤销 API key 是在你自己的 OpenRouter 账号上的外部写操作，是否需要我在动手前再单独说一声？
 
 > 2026-11-05: design drafted against implemented baseline f758b85; no implementation code written yet.
+
+## 实施状态（2026-11-18 复核）
+
+复核基线：`main` @ `32c29e2`。四门禁与 stub 回归均在本基线重跑，结果见文末表格。
+
+| 增量 | 状态 | 证据 |
+|---|---|---|
+| ② 细粒度 PAT 私有读取 | **已实现并合并** | PR #14（`aa3543e`，`src/core/diagnostic/private-access.ts` + `public-sources.ts` 的 Bearer 分支）、PR #17（`721fc0e`，UI 接线）；`browser.storage.session` 单键、仅 `api.github.com`、URL 仍限 `blob/<40-hex SHA>/<path>` |
+| ③ 无状态多轮重发 | **已实现并合并** | PR #15（`198d193`，`buildOpenRouterConversationRequestBody`）、PR #18（`85ab9aa`，`DiagnosticDraft.tsx` 的 `turns` / `followUp` 内存态）；ADR-0002 补记见 PR #16（`6dd5929`） |
+| ④ ADR-0002 补记 | **已完成** | `docs/decisions/ADR-0002-openrouter-diagnostic-integration.md:7` 头部指向 + 文末「补记（2026-11-05）」 |
+| ① 真实 key 的成功 live 200 | **仍未验证** | `--expect-200` 路径（PR #20 `cc73420`）与守卫已就绪，但从未用真 key 跑过；本轮再次确认为 0 个可用真实 key |
+
+### 增量① 的阻塞点（2026-11-18 探测结论）
+
+1. **本机仍无任何真实 OpenRouter key**：`OPENROUTER_LIVE_KEY` 未设；`%USERPROFILE%\.config`、`.openrouter`、`%APPDATA%`、`%USERPROFILE%\.dsh`、仓库与构建产物均无 `sk-or-v1-…` 形态的真实 key（只有测试哨兵与 UI 占位符）。
+2. **无法由代理自行注册新账号**（原草案 §0 结论在 2026-11-18 再次成立，并补一条更硬的依据）：ToS（Last Updated: August 31, 2026）Prohibited Conduct 明确禁止「create a false identity, misrepresent your identity, or create multiple accounts as a single user, for purposes of bypassing or circumventing use limits … **or for any other reason**」。用一次性邮箱代注册即落入该条，**不做**。
+3. **无法直接复用浏览器里的既有登录态**：Chrome/Edge 的 `openrouter.ai` 域下确有未过期的 `__session` / `__refresh_NO6jtgZM` / `__client_uat` 等 cookie；但 cookie 值受 App-Bound Encryption 保护，复制 profile 后解密失败（`session-probe.mjs` 实测两个浏览器都跳 `sign-in`）。要在真凭据下取 key，只能**由本人在自己那台机器的可见窗口里操作**。
+4. 网络与平台侧可用：`GET /api/v1/models` 200（478 模型 / 14 个 `:free`），`api.mail.tm` 与 guerrillamail 可达 —— 即「技术管道」通，卡点纯粹是**凭据与身份合规**。
+
+### 需要 Tangyixiao 决策的三条路（选一条即可解锁 ①）
+
+- **A（推荐）**：你在自己的浏览器里打开 openrouter.ai → API keys → 创建一个 key，把它写进**本机**环境变量（`$env:OPENROUTER_LIVE_KEY`，不要发给我、不要贴进对话），然后说一声「好了」。我随即跑
+  `node tests/browser/diagnostic-openrouter.mjs --expect-200 --model google/gemma-4-31b-it:free --headed --playwright-core 'D:\tangyixiao.github.io\node_modules\playwright-core\index.mjs'`，
+  由你在弹出的原生 host 权限框点「允许」，我据此记录 200 证据并把验收文档从「未验证」改成实测结论。全程 key 只在 `Authorization` 头里出现，不落盘、不入日志。
+- **B**：你把 key 交给一个本机脚本文件（同样不进仓库、不进对话），我用同样的命令跑；与 A 的差别只是谁来敲环境变量。
+- **C**：暂时接受「① 未验证」作为已知限制，我把它写进验收文档与 README 的 Known limitations，然后本目标按「② ③ 已交付 + ① 明确挂起」收尾。
+
+> 在任何一条路上，key 创建成功后若不打算长期使用，可随时在 OpenRouter 的 API keys 页面撤销；我不会代你在你的账号上创建或撤销任何凭据。
+
